@@ -7,7 +7,9 @@
     "url": "https://github.com/Ilingu"
   },
   "repository": {
-    "url": "https://github.com/Ilingu/"
+    "url": "https://github.com/Ilingu/ilix.git",
+    "directory": "/apps/ilix-mobile",
+    "type": "git"
   },
   "version": "0.0.1-alpha",
   "license": "MIT",
