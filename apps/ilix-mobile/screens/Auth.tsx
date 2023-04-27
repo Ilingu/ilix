@@ -1,5 +1,7 @@
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { RootStackParamList } from "../App";
+import {
+  NativeStackScreenProps,
+  createNativeStackNavigator,
+} from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { Image, Text, TextInput, View } from "react-native";
 import tw from "twrnc";
@@ -8,11 +10,46 @@ import { useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AntDesign from "@expo/vector-icons/AntDesign";
+import FadeInView from "../components/animations/FadeIn";
+import ParticleView from "../components/animations/Particles";
 
-// Animation idea about little gray particule colliding with the login border
+type NestedStackParamList = {
+  SingIn: undefined;
+  SignUp: undefined;
+};
+const { Screen, Navigator } =
+  createNativeStackNavigator<NestedStackParamList>();
 
-type NavigationProps = NativeStackScreenProps<RootStackParamList, "Auth">;
-export default function Auth({ navigation }: NavigationProps) {
+export default function Auth() {
+  return (
+    <Navigator
+      initialRouteName="SingIn"
+      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
+    >
+      <Screen name="SingIn" component={SingIn} />
+      <Screen name="SignUp" component={SignUp} />
+    </Navigator>
+  );
+}
+
+const SignUp = () => {
+  return (
+    <SafeAreaProvider>
+      <ParticleView
+        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
+        paticles_number={1}
+      >
+        <Text>test</Text>
+      </ParticleView>
+    </SafeAreaProvider>
+  );
+};
+
+type SignInNavigationProps = NativeStackScreenProps<
+  NestedStackParamList,
+  "SingIn"
+>;
+const SingIn = ({ navigation }: SignInNavigationProps) => {
   const [SyncCode, setSyncCode] = useState("");
 
   return (
@@ -36,12 +73,35 @@ export default function Auth({ navigation }: NavigationProps) {
               Sync Code
             </Text>
             <TextInput
+              placeholder="0000 0000 0000 0000 0000"
+              value={SyncCode}
               onChangeText={(ntext) =>
                 isFinite(ntext as unknown as number) && setSyncCode(ntext)
               }
-              value={SyncCode}
-              style={tw`border-2 border-black rounded-xl w-full h-10 px-2`}
+              maxLength={20}
+              style={tw`border-2 border-black rounded-lg w-full h-10 text-center`}
             />
+
+            {SyncCode.length == 20 && (
+              <FadeInView duration={500}>
+                <Text
+                  onPress={() => null}
+                  style={tw`bg-[${ColorScheme.PRIMARY}] text-[${ColorScheme.PRIMARY_CONTENT}] text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
+                >
+                  Sign In
+                </Text>
+              </FadeInView>
+            )}
+
+            <Text style={tw`italic mt-3 text-xs ml-2`}>
+              New to Ilix?{" "}
+              <Text
+                style={tw`text-[${ColorScheme.PRIMARY}] underline`}
+                onPress={() => navigation.push("SignUp")}
+              >
+                Create account
+              </Text>
+            </Text>
           </View>
         </View>
 
@@ -49,4 +109,4 @@ export default function Auth({ navigation }: NavigationProps) {
       </View>
     </SafeAreaProvider>
   );
-}
+};

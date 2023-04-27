@@ -1,4 +1,5 @@
 https://reactnative.dev/docs/environment-setup
+https://reactnative.dev/docs/components-and-apis
 https://docs.expo.dev/get-started/create-a-project/
 https://reactnavigation.org/docs/getting-started
 https://github.com/jaredh159/tailwind-react-native-classnames
