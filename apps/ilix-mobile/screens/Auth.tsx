@@ -37,9 +37,9 @@ const SignUp = () => {
     <SafeAreaProvider>
       <ParticleView
         style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-        paticles_number={1}
+        paticles_number={5}
       >
-        <Text>test</Text>
+        <Text style={tw`text-black font-bold text-xl`}>test</Text>
       </ParticleView>
     </SafeAreaProvider>
   );
@@ -54,10 +54,13 @@ const SingIn = ({ navigation }: SignInNavigationProps) => {
 
   return (
     <SafeAreaProvider>
-      <View
+      <ParticleView
+        paticles_number={5}
         style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
       >
-        <View style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white`}>
+        <View
+          style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
+        >
           <Image
             source={require("../assets/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
@@ -106,7 +109,7 @@ const SingIn = ({ navigation }: SignInNavigationProps) => {
         </View>
 
         <StatusBar style="light" backgroundColor="black" />
-      </View>
+      </ParticleView>
     </SafeAreaProvider>
   );
 };
