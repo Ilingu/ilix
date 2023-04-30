@@ -4,12 +4,20 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Auth from "./screens/Auth";
 import AuthContext, { defaultStore } from "./lib/AuthContext";
 import DetailsScreen from "./screens/Details";
+import { Platform, UIManager } from "react-native";
 
 export type RootStackParamList = {
   Auth: undefined;
   Details: undefined;
 };
 const { Screen, Navigator } = createNativeStackNavigator<RootStackParamList>();
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function App() {
   return (
