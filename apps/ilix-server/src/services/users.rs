@@ -1,10 +1,10 @@
 use actix_web::{get, post, web, Responder};
 
-use crate::db::{collections::DeviceCollection, IlixDB};
+use crate::db::{collections::DevicePoolsCollection, IlixDB};
 
 #[post("/login")]
 async fn login(db: web::Data<IlixDB>) -> impl Responder {
-    db.client.log_device_in();
+    db.client.join_pool();
     format!("Hello!")
 }
 

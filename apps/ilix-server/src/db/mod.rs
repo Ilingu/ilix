@@ -1,6 +1,7 @@
 pub mod collections;
 mod models;
 
+use anyhow::Result;
 use std::env;
 
 use mongodb::{options::ClientOptions, Client};

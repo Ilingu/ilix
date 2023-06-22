@@ -5,7 +5,7 @@ mod utils;
 
 use actix_web::{web, App, HttpServer};
 use app::AppState;
-use db::IlixDB;
+use db::{collections::DevicePoolsCollection, IlixDB};
 use services::users::{login, sign_up};
 
 #[actix_web::main]
@@ -16,6 +16,7 @@ async fn main() -> std::io::Result<()> {
     let srv_addr = app.get_server_addr().expect("Couldn't get server addr");
 
     let db = IlixDB::connect().await.unwrap();
+    db.client.create_hashed_kp_index().await;
 
     HttpServer::new(move || {
         App::new()

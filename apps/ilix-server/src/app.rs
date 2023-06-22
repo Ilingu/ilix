@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::env;
 
 use crate::utils::is_prod;
@@ -22,12 +23,8 @@ impl AppState<'_> {
         Self::default()
     }
 
-    pub fn get_server_addr(&self) -> Result<(&str, u16), ()> {
-        let port = env::var("PORT")
-            .map_err(|_| ())?
-            .parse::<u16>()
-            .map_err(|_| ())?;
-
+    pub fn get_server_addr(&self) -> Result<(&str, u16)> {
+        let port = env::var("PORT")?.parse::<u16>()?;
         Ok(match self.is_prod {
             true => ("0.0.0.0", port),
             false => ("127.0.0.1", port),

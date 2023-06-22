@@ -1,3 +1,5 @@
+pub mod keyphrase;
+
 use std::env;
 
 pub fn is_prod() -> bool {
@@ -6,3 +8,5 @@ pub fn is_prod() -> bool {
         .parse()
         .unwrap_or(true)
 }
+
+pub const DB_NAME: &str = "ilix";
