@@ -1,10 +1,8 @@
-use anyhow::Result;
-use std::fs;
+use anyhow::{anyhow, Result};
+use hex_string::HexString;
+use sha3::{Digest, Sha3_256};
+use std::{env, fs};
 
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2,
-};
 use rand::Rng;
 
 pub struct KeyPhrase {
@@ -38,26 +36,28 @@ impl KeyPhrase {
     }
 
     pub fn hash(&self) -> Result<String> {
-        let salt = SaltString::generate(&mut OsRng);
+        let hash_round = env::var("HASH_ROUND")?.parse::<usize>()?;
+        if hash_round < 5 {
+            return Err(anyhow!("hash round not safe enough"));
+        }
 
-        // Argon2 with default params (Argon2id v19)
-        let argon2 = Argon2::default();
+        let mut hasher = Sha3_256::new();
+        let mut result = self.key_phrase.clone();
 
-        let kp_hash = argon2
-            .hash_password(self.key_phrase.as_bytes(), &salt)
-            .map_err(anyhow::Error::msg)?
-            .to_string();
-
-        Ok(kp_hash)
+        for _ in 0..hash_round {
+            hasher.update(result.as_bytes());
+            let result_buf = hasher.finalize().to_vec();
+            result = HexString::from_bytes(&result_buf).as_string();
+            hasher = Sha3_256::new();
+        }
+        Ok(result)
     }
 
-    pub fn verify(kp_hash: String, kp_to_verify: String) -> bool {
-        let parsed_hash = match PasswordHash::new(&kp_hash) {
-            Ok(ph) => ph,
+    pub fn verify(right_kp_hash: String, kp_to_verify: String) -> bool {
+        let hashed_kp_to_verify = match KeyPhrase::from(kp_to_verify).hash() {
+            Ok(v) => v,
             Err(_) => return false,
         };
-        Argon2::default()
-            .verify_password(kp_to_verify.as_bytes(), &parsed_hash)
-            .is_ok()
+        hashed_kp_to_verify == right_kp_hash
     }
 }

@@ -10,3 +10,7 @@ pub fn is_prod() -> bool {
 }
 
 pub const DB_NAME: &str = "ilix";
+
+pub fn is_str_empty(str: &str) -> bool {
+    str.trim().is_empty()
+}
