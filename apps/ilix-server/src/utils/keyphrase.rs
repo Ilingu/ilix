@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::error::Error;
 use std::fs;
 
 use argon2::{
@@ -10,6 +9,12 @@ use rand::Rng;
 
 pub struct KeyPhrase {
     pub key_phrase: String,
+}
+
+impl From<String> for KeyPhrase {
+    fn from(kp: String) -> Self {
+        KeyPhrase { key_phrase: kp }
+    }
 }
 
 impl KeyPhrase {
@@ -32,7 +37,7 @@ impl KeyPhrase {
         }
     }
 
-    pub fn hash(&self) -> Result<String, ()> {
+    pub fn hash(&self) -> Result<String> {
         let salt = SaltString::generate(&mut OsRng);
 
         // Argon2 with default params (Argon2id v19)
@@ -40,7 +45,7 @@ impl KeyPhrase {
 
         let kp_hash = argon2
             .hash_password(self.key_phrase.as_bytes(), &salt)
-            .map_err(|_| ())?
+            .map_err(anyhow::Error::msg)?
             .to_string();
 
         Ok(kp_hash)

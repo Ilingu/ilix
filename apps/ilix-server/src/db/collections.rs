@@ -8,17 +8,20 @@ use super::models::DevicesPool;
 
 #[async_trait]
 pub trait DevicePoolsCollection {
-    fn join_pool(&self);
-    async fn new_pool(&self, name: String, root_device_id: String) -> Result<String, ()>;
+    async fn join_pool(&self, key_phrase: String, device_id: String) -> Result<()>;
+    async fn new_pool(&self, name: String, root_device_id: String) -> Result<String>;
     async fn create_hashed_kp_index(&self);
 }
 
 #[async_trait]
 impl DevicePoolsCollection for Client {
-    fn join_pool(&self) {}
-    async fn new_pool(&self, name: String, root_device_id: String) -> Result<String, ()> {
+    async fn join_pool(&self, key_phrase: String, device_id: String) -> Result<()> {
+        let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
+        Ok(())
+    }
+    async fn new_pool(&self, name: String, root_device_id: String) -> Result<String> {
         let kp = KeyPhrase::new(20);
-        let hashed_kp = kp.hash().map_err(|_| ())?;
+        let hashed_kp = kp.hash()?;
 
         let devices_pool = DevicesPool {
             pool_name: name,
@@ -29,8 +32,7 @@ impl DevicePoolsCollection for Client {
         self.database(DB_NAME)
             .collection::<DevicesPool>("devices_pools")
             .insert_one(devices_pool, None)
-            .await
-            .map_err(|_| ())?;
+            .await?;
         Ok(kp.key_phrase)
     }
 
