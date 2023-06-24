@@ -1011,6 +1011,7 @@ dependencies = [
  "mongodb",
  "mongodb-gridfs",
  "rand",
+ "scopeguard",
  "serde",
  "serde_json",
  "sha3",

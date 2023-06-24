@@ -2,6 +2,7 @@ use std::io::Write;
 
 use actix_files::NamedFile;
 use actix_web::{delete, get, http::StatusCode, web, Either, Responder, Result};
+use uuid::Uuid;
 
 use crate::{
     app::ServerErrors,
@@ -31,10 +32,17 @@ async fn get_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> GetFileR
     let db_result = db.client.get_file(file_id.to_owned()).await;
     match db_result {
         Ok((filename, filebuf)) => {
-            let filepath = format!("./tmp/{filename}");
+            let filepath = format!("./tmp/{}-{filename}", Uuid::new_v4());
+            let filepath2 = filepath.clone();
+            let filepath3 = filepath.clone();
+
             if let Ok(Ok(mut f)) = web::block(|| std::fs::File::create(filepath)).await {
                 if let Ok(Ok(_)) = web::block(move || f.write_all(&filebuf)).await {
-                    if let Ok(file) = NamedFile::open_async(format!("./tmp/{filename}")).await {
+                    if let Ok(file) = NamedFile::open_async(filepath2).await {
+                        scopeguard::defer! {
+                            let _ = std::fs::remove_file(filepath3);
+                        };
+
                         return Either::Right(Ok(file));
                     }
                 }

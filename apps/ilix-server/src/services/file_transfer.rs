@@ -70,14 +70,27 @@ async fn add_transfer(
         );
     }
 
+    let bad_file_resp = ResponsePayload::new(
+        false,
+        &(),
+        Some(StatusCode::BAD_REQUEST),
+        Some("Failed to parse file".to_string()),
+    );
+
     let mut files = vec![];
     // iterate over multipart stream
-    while let Ok(Some(mut field)) = form.try_next().await {
+    while let Some(mut field) = match form.try_next().await {
+        Ok(data) => data,
+        Err(_) => return bad_file_resp,
+    } {
         // A multipart/form-data stream has to contain `content_disposition`
 
         let mut file_buf = vec![];
         // Field in turn is stream of *Bytes* object
-        while let Ok(Some(chunk)) = field.try_next().await {
+        while let Some(chunk) = match field.try_next().await {
+            Ok(data) => data,
+            Err(_) => return bad_file_resp,
+        } {
             let mut reader = chunk.reader();
             let _ = reader.read_to_end(&mut file_buf);
         }
