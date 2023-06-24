@@ -8,7 +8,7 @@ use mongodb::{options::ClientOptions, Client};
 
 pub const DB_NAME: &str = "ilix";
 pub const DEVICES_POOL_COLL: &str = "devices_pools";
-pub const FILE_TRANSFER_COLL: &str = "file_transfer";
+pub const FILE_TRANSFER_COLL: &str = "files_transfers";
 pub const GRIDFS_BUCKET_NAME: &str = "ilix_fs";
 
 #[derive(Debug)]

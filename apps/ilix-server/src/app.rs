@@ -10,6 +10,13 @@ pub enum ServerErrors<'a> {
     HashFailed,
     DictionnaryNotFound,
     InvalidObjectId,
+    PoolNotFound,
+    TransferNotFound,
+    AlreadyInPool,
+    NotInPool,
+    FileError,
+    EnvVarNotFound,
+    ParseError,
     Custom(&'a str),
 }
 

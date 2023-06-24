@@ -1,4 +1,5 @@
-mod file_transfer;
+pub mod file_transfer;
+pub mod files;
 pub mod pool;
 
 use actix_web::{
@@ -27,34 +28,30 @@ impl ResponsePayload {
         error_status: Option<StatusCode>,
         error_reason: Option<String>,
     ) -> Self {
-        let data = if success {
-            match serde_json::to_string(&data) {
-                Ok(jsonstr) => Some(jsonstr),
+        let data = match success {
+            true => match serde_json::to_string(&data) {
+                Ok(json_str) => Some(json_str),
                 Err(_) => {
                     success = false;
                     None
                 }
-            }
-        } else {
-            None
+            },
+            false => None,
         };
 
         Self {
             success,
-            status_code: if success {
-                StatusCode::OK.as_u16()
-            } else {
-                error_status
-                    .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
-                    .as_u16()
-            },
-            reason: if success || error_reason.is_none() {
-                None
-            } else {
-                #[allow(clippy::unnecessary_unwrap)]
-                Some(error_reason.unwrap())
-            },
             data,
+            status_code: match success {
+                true => StatusCode::OK.as_u16(),
+                false => error_status
+                    .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+                    .as_u16(),
+            },
+            reason: match success {
+                true => None,
+                false => Some(error_reason.unwrap_or("No error message provided".to_string())),
+            },
         }
     }
 }

@@ -5,9 +5,16 @@ mod utils;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use app::AppState;
-use db::{collections::DevicePoolsCollection, IlixDB};
+use db::{
+    collections::{DevicePoolsCollection, FilePoolTransferCollection},
+    IlixDB,
+};
 use env_logger::Env;
-use services::pool::{get_pool, join_pool, leave_pool, new_pool};
+use services::{
+    file_transfer::{add_transfer, delete_transfer, get_all_transfer},
+    files::{delete_file, get_file},
+    pool::{get_pool, join_pool, leave_pool, new_pool},
+};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -15,14 +22,24 @@ async fn main() -> std::io::Result<()> {
     let app = AppState::new();
     let srv_addr = app.get_server_addr().expect("Couldn't get server addr");
 
+    // db connection
     let db = IlixDB::connect()
         .await
         .expect("Couldn't connect to mongodb database");
-    db.client
-        .create_hashed_kp_index()
-        .await
-        .expect("creating an index should succeed");
 
+    // Index creation
+    {
+        db.client
+            .create_pool_hashed_kp_index()
+            .await
+            .expect("creating an index should succeed");
+        db.client
+            .create_transfer_hashed_kp_index()
+            .await
+            .expect("creating an index should succeed");
+    }
+
+    // Launch web service
     env_logger::init_from_env(Env::default().default_filter_or("info"));
     HttpServer::new(move || {
         App::new()
@@ -37,7 +54,13 @@ async fn main() -> std::io::Result<()> {
                     .service(join_pool)
                     .service(leave_pool),
             )
-            .service(web::scope("/file-transfer"))
+            .service(
+                web::scope("/file-transfer")
+                    .service(get_all_transfer)
+                    .service(add_transfer)
+                    .service(delete_transfer),
+            )
+            .service(web::scope("/files").service(get_file).service(delete_file))
             .app_data(web::Data::new(db.clone()))
             .app_data(web::Data::new(app))
     })

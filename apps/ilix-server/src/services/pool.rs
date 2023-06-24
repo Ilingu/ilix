@@ -1,7 +1,8 @@
-use actix_web::{delete, get, http::StatusCode, post, web, Responder};
+use actix_web::{delete, get, http::StatusCode, post, put, web, Responder};
 use serde::Deserialize;
 
 use crate::{
+    app::ServerErrors,
     db::{collections::DevicePoolsCollection, IlixDB},
     utils::{is_key_phrase, is_str_empty},
 };
@@ -31,7 +32,7 @@ struct UpdatePoolPayload {
     device_id: String,
 }
 
-#[post("/{pool_kp}/join")]
+#[put("/{pool_kp}/join")]
 async fn join_pool(
     db: web::Data<IlixDB>,
     info: web::Json<UpdatePoolPayload>,
@@ -53,7 +54,15 @@ async fn join_pool(
 
     match db_result {
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
-        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+        Err(err) => {
+            let err_status_code = match err {
+                ServerErrors::AlreadyInPool => StatusCode::CONFLICT,
+                ServerErrors::PoolNotFound => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+
+            ResponsePayload::new(false, &(), Some(err_status_code), Some(err.to_string()))
+        }
     }
 }
 
@@ -79,7 +88,15 @@ async fn leave_pool(
 
     match db_result {
         Ok(_) => ResponsePayload::new(true, &(), None, None),
-        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+        Err(err) => {
+            let err_status_code = match err {
+                ServerErrors::NotInPool => StatusCode::CONFLICT,
+                ServerErrors::PoolNotFound => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+
+            ResponsePayload::new(false, &(), Some(err_status_code), Some(err.to_string()))
+        }
     }
 }
 

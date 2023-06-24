@@ -47,9 +47,9 @@ impl KeyPhrase {
 
     pub fn hash(&self) -> Result<String, ServerErrors<'static>> {
         let hash_round = env::var("HASH_ROUND")
-            .map_err(|_| ServerErrors::HashFailed)?
+            .map_err(|_| ServerErrors::EnvVarNotFound)?
             .parse::<usize>()
-            .map_err(|_| ServerErrors::HashFailed)?;
+            .map_err(|_| ServerErrors::ParseError)?;
         if hash_round < 5 {
             return Err(ServerErrors::Custom("hash round not safe enough"));
         }
