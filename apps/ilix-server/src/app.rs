@@ -3,6 +3,25 @@ use std::env;
 
 use crate::utils::is_prod;
 
+#[derive(Debug)]
+pub enum ServerErrors<'a> {
+    NoDatas,
+    MongoError,
+    HashFailed,
+    DictionnaryNotFound,
+    InvalidObjectId,
+    Custom(&'a str),
+}
+
+impl ToString for ServerErrors<'_> {
+    fn to_string(&self) -> String {
+        match self {
+            ServerErrors::Custom(err) => err.to_string(),
+            _ => format!("{self:?}"),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct AppState<'a> {
     pub is_prod: bool,

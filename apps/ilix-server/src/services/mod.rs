@@ -1,3 +1,4 @@
+mod file_transfer;
 pub mod pool;
 
 use actix_web::{
@@ -11,7 +12,11 @@ use serde::Serialize;
 pub struct ResponsePayload {
     success: bool,
     status_code: u16,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     reason: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<String>,
 }
 

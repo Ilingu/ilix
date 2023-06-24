@@ -1,26 +1,46 @@
-use actix_web::{delete, http::StatusCode, post, web, Responder};
-use anyhow::anyhow;
+use actix_web::{delete, get, http::StatusCode, post, web, Responder};
 use serde::Deserialize;
 
 use crate::{
     db::{collections::DevicePoolsCollection, IlixDB},
-    utils::is_str_empty,
+    utils::{is_key_phrase, is_str_empty},
 };
 
 use super::ResponsePayload;
 
+#[get("/{pool_kp}")]
+async fn get_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> impl Responder {
+    if is_str_empty(&key_phrase) || is_key_phrase(&key_phrase) {
+        return ResponsePayload::new(
+            false,
+            &(),
+            Some(StatusCode::BAD_REQUEST),
+            Some("Bad Args".to_string()),
+        );
+    }
+
+    let db_result = db.client.get_pool(key_phrase.to_owned()).await;
+    match db_result {
+        Ok(datas) => ResponsePayload::new(true, &datas, None, None),
+        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+    }
+}
+
 #[derive(Deserialize)]
 struct UpdatePoolPayload {
-    key_phrase: String,
     device_id: String,
 }
 
-#[post("/join")]
-async fn join_pool(db: web::Data<IlixDB>, info: web::Json<UpdatePoolPayload>) -> impl Responder {
-    if is_str_empty(&info.key_phrase) || is_str_empty(&info.device_id) {
-        return ResponsePayload::new::<Option<()>>(
+#[post("/{pool_kp}/join")]
+async fn join_pool(
+    db: web::Data<IlixDB>,
+    info: web::Json<UpdatePoolPayload>,
+    key_phrase: web::Path<String>,
+) -> impl Responder {
+    if is_str_empty(&key_phrase) || is_str_empty(&info.device_id) || is_key_phrase(&key_phrase) {
+        return ResponsePayload::new(
             false,
-            &None,
+            &(),
             Some(StatusCode::BAD_REQUEST),
             Some("Bad Args".to_string()),
         );
@@ -28,24 +48,25 @@ async fn join_pool(db: web::Data<IlixDB>, info: web::Json<UpdatePoolPayload>) ->
 
     let db_result = db
         .client
-        .join_pool(info.key_phrase.to_owned(), info.device_id.to_owned())
+        .join_pool(key_phrase.to_owned(), info.device_id.to_owned())
         .await;
 
-    let err_msg = db_result
-        .as_ref()
-        .err()
-        .unwrap_or(&anyhow!("Error when joining pool"))
-        .to_string();
-
-    ResponsePayload::new(db_result.is_ok(), &db_result.ok(), None, Some(err_msg))
+    match db_result {
+        Ok(datas) => ResponsePayload::new(true, &datas, None, None),
+        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+    }
 }
 
-#[delete("/leave")]
-async fn leave_pool(db: web::Data<IlixDB>, info: web::Json<UpdatePoolPayload>) -> impl Responder {
-    if is_str_empty(&info.key_phrase) || is_str_empty(&info.device_id) {
-        return ResponsePayload::new::<Option<()>>(
+#[delete("/{pool_kp}/leave")]
+async fn leave_pool(
+    db: web::Data<IlixDB>,
+    info: web::Json<UpdatePoolPayload>,
+    key_phrase: web::Path<String>,
+) -> impl Responder {
+    if is_str_empty(&key_phrase) || is_str_empty(&info.device_id) || is_key_phrase(&key_phrase) {
+        return ResponsePayload::new(
             false,
-            &None,
+            &(),
             Some(StatusCode::BAD_REQUEST),
             Some("Bad Args".to_string()),
         );
@@ -53,16 +74,13 @@ async fn leave_pool(db: web::Data<IlixDB>, info: web::Json<UpdatePoolPayload>) -
 
     let db_result = db
         .client
-        .leave_pool(info.key_phrase.to_owned(), info.device_id.to_owned())
+        .leave_pool(key_phrase.to_owned(), info.device_id.to_owned())
         .await;
 
-    let err_msg = db_result
-        .as_ref()
-        .err()
-        .unwrap_or(&anyhow!("Error when joining pool"))
-        .to_string();
-
-    ResponsePayload::new(db_result.is_ok(), &db_result.ok(), None, Some(err_msg))
+    match db_result {
+        Ok(_) => ResponsePayload::new(true, &(), None, None),
+        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+    }
 }
 
 #[derive(Deserialize)]
@@ -74,9 +92,9 @@ struct NewPoolPayload {
 #[post("/new")]
 async fn new_pool(db: web::Data<IlixDB>, info: web::Json<NewPoolPayload>) -> impl Responder {
     if is_str_empty(&info.name) || is_str_empty(&info.device_id) {
-        return ResponsePayload::new::<Option<()>>(
+        return ResponsePayload::new(
             false,
-            &None,
+            &(),
             Some(StatusCode::BAD_REQUEST),
             Some("Empty Args".to_string()),
         );
@@ -87,10 +105,8 @@ async fn new_pool(db: web::Data<IlixDB>, info: web::Json<NewPoolPayload>) -> imp
         .new_pool(info.name.to_owned(), info.device_id.to_owned())
         .await;
 
-    ResponsePayload::new(
-        db_result.is_ok(),
-        &db_result.ok(),
-        None,
-        Some("Error when creating pool".to_string()),
-    )
+    match db_result {
+        Ok(datas) => ResponsePayload::new(true, &datas, None, None),
+        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+    }
 }
