@@ -35,8 +35,15 @@ pub trait DevicePoolsCollection {
 }
 
 lazy_static! {
-    static ref KP_INDEX_MODEL: IndexModel = {
+    static ref KP_INDEX_MODEL_UNIQUE: IndexModel = {
         let options = IndexOptions::builder().unique(true).build();
+        IndexModel::builder()
+            .keys(doc! { "hashed_key_phrase": 1 })
+            .options(options)
+            .build()
+    };
+    static ref KP_INDEX_MODEL: IndexModel = {
+        let options = IndexOptions::builder().unique(false).build();
         IndexModel::builder()
             .keys(doc! { "hashed_key_phrase": 1 })
             .options(options)
@@ -129,7 +136,7 @@ impl DevicePoolsCollection for Client {
     async fn create_pool_hashed_kp_index(&self) -> Result<()> {
         self.database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
-            .create_index(KP_INDEX_MODEL.to_owned(), None)
+            .create_index(KP_INDEX_MODEL_UNIQUE.to_owned(), None)
             .await?;
         Ok(())
     }
@@ -149,6 +156,7 @@ pub trait FilePoolTransferCollection {
         to: String,
         files_id: Vec<String>,
     ) -> Result<(), ServerErrors>;
+    async fn remove_transfer_file(&self, file_id: String) -> Result<(), ServerErrors>;
     async fn delete_transfer(
         &self,
         key_phrase: String,
@@ -206,14 +214,19 @@ impl FilePoolTransferCollection for Client {
         to: String,
         files_id: Vec<String>,
     ) -> Result<(), ServerErrors> {
-        let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
+        let hashed_kp = KeyPhrase::from(key_phrase.clone()).hash()?;
         let data_to_insert = FilePoolTransfer {
             _id: ObjectId::new(), // whatever, this won't get serialized
             pool_hashed_key_phrase: hashed_kp,
-            to,
-            from,
+            to: to.clone(),
+            from: from.clone(),
             files_id,
         };
+
+        let pool = self.get_pool(key_phrase).await?;
+        if !pool.devices_id.contains(&from) || !pool.devices_id.contains(&to) {
+            return Err(ServerErrors::NotInPool);
+        }
 
         self.database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
@@ -223,6 +236,26 @@ impl FilePoolTransferCollection for Client {
         Ok(()) // the transfer id don't get transmitted to the user because it's not his anymore
     }
 
+    async fn remove_transfer_file(&self, file_id: String) -> Result<(), ServerErrors> {
+        let update_report = self
+            .database(DB_NAME)
+            .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
+            .update_one(
+                doc! {"files_id": file_id.clone()},
+                doc! {"$pull" : {"files_id": file_id}},
+                None,
+            )
+            .await
+            .map_err(|_| ServerErrors::MongoError)?;
+        if update_report.matched_count == 0 {
+            return Err(ServerErrors::TransferNotFound);
+        }
+        if update_report.modified_count == 0 {
+            return Err(ServerErrors::NotInTransfer);
+        }
+        Ok(())
+    }
+
     async fn delete_transfer(
         &self,
         key_phrase: String,
@@ -230,13 +263,12 @@ impl FilePoolTransferCollection for Client {
         transfer_id: String,
     ) -> Result<Vec<String>, ServerErrors> {
         let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
+        let id = ObjectId::from_str(&transfer_id).map_err(|_| ServerErrors::InvalidObjectId)?;
+        let filter = doc! {"pool_hashed_key_phrase": hashed_kp, "to": to_device_id, "_id":id };
         let find_report = self
             .database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
-            .find_one_and_delete(
-                doc! {"pool_hashed_key_phrase": hashed_kp, "to": to_device_id, "_id": transfer_id},
-                None,
-            )
+            .find_one_and_delete(filter, None)
             .await
             .map_err(|_| ServerErrors::MongoError)?
             .ok_or(ServerErrors::TransferNotFound)?;

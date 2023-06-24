@@ -3,17 +3,18 @@ use std::env;
 
 use crate::utils::is_prod;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ServerErrors<'a> {
     NoDatas,
     MongoError,
-    HashFailed,
+    // HashFailed,
     DictionnaryNotFound,
     InvalidObjectId,
     PoolNotFound,
     TransferNotFound,
     AlreadyInPool,
     NotInPool,
+    NotInTransfer,
     FileError,
     EnvVarNotFound,
     ParseError,

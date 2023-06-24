@@ -35,7 +35,7 @@ async fn get_all_transfer(
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
         Err(err) => {
             let err_status_code = match err {
-                ServerErrors::NoDatas => StatusCode::NO_CONTENT,
+                ServerErrors::NoDatas => StatusCode::GONE, // I'm trying to say: "no datas at the moment"
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
             ResponsePayload::new(false, &(), Some(err_status_code), Some(err.to_string()))
@@ -114,13 +114,24 @@ async fn add_transfer(
             key_phrase.to_owned(),
             query.from.to_owned(),
             query.to.to_owned(),
-            files_id,
+            files_id.clone(),
         )
         .await;
 
     match db_result {
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
-        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+        Err(err) => {
+            // failed to add trasnfer, delete all added files
+            for file_id in files_id {
+                let _ = db.client.delete_file(file_id.to_owned()).await;
+            }
+
+            let err_status_code = match err {
+                ServerErrors::NotInPool => StatusCode::NOT_FOUND,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            ResponsePayload::new(false, &(), Some(err_status_code), Some(err.to_string()))
+        }
     }
 }
 

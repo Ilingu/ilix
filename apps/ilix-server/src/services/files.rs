@@ -4,7 +4,11 @@ use actix_files::NamedFile;
 use actix_web::{delete, get, http::StatusCode, web, Either, Responder, Result};
 
 use crate::{
-    db::{collections::FileStorageGridFS, IlixDB},
+    app::ServerErrors,
+    db::{
+        collections::{FilePoolTransferCollection, FileStorageGridFS},
+        IlixDB,
+    },
     utils::is_str_empty,
 };
 
@@ -63,6 +67,18 @@ async fn delete_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> impl 
             Some(StatusCode::BAD_REQUEST),
             Some("Bad Args".to_string()),
         );
+    }
+
+    let db_result = db.client.remove_transfer_file(file_id.to_owned()).await;
+    if let Err(err) = db_result {
+        if err != ServerErrors::NotInTransfer && err != ServerErrors::TransferNotFound {
+            return ResponsePayload::new(
+                false,
+                &(),
+                Some(StatusCode::CONFLICT),
+                Some(err.to_string()),
+            );
+        }
     }
 
     let db_result = db.client.delete_file(file_id.to_owned()).await;
