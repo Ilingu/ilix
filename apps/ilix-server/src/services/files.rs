@@ -19,7 +19,6 @@ use super::ResponsePayload;
 type GetFileResult = Either<ResponsePayload, Result<NamedFile>>;
 #[get("/{file_id}")]
 async fn get_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> GetFileResult {
-    println!("here");
     if is_str_empty(&file_id) {
         return Either::Left(ResponsePayload::new(
             false,

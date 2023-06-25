@@ -995,7 +995,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ilix-server"
+name = "ilix_server"
 version = "0.1.0"
 dependencies = [
  "actix-files",
@@ -1008,6 +1008,7 @@ dependencies = [
  "hex-literal",
  "hex-string",
  "lazy_static",
+ "log",
  "mongodb",
  "mongodb-gridfs",
  "rand",

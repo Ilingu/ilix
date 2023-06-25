@@ -15,6 +15,7 @@ use services::{
     files::{delete_file, get_file},
     pool::{get_pool, join_pool, leave_pool, new_pool},
 };
+use utils::console_log;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -41,6 +42,10 @@ async fn main() -> std::io::Result<()> {
 
     // Launch web service
     env_logger::init_from_env(Env::default().default_filter_or("info"));
+    console_log(
+        &format!("Lauching web service on: {}:{} 🌐", srv_addr.0, srv_addr.1),
+        log::Level::Info,
+    );
     HttpServer::new(move || {
         App::new()
             // Req Logger

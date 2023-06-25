@@ -1,5 +1,5 @@
 [package]
-name = "ilix-server"
+name = "ilix_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,6 +16,7 @@ env_logger = "0.10.0"
 hex-literal = "0.4.1"
 hex-string = "0.1.0"
 lazy_static = "1.4.0"
+log = "0.4.19"
 mongodb = "2.5.0"
 mongodb-gridfs = "0.2.5"
 rand = "0.8.5"

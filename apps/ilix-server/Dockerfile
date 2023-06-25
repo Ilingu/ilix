@@ -1,38 +1,53 @@
 # NB: This is not a production-grade Dockerfile.
 
-#################
-## build stage ##
-#################
-FROM rust:1-slim-bullseye AS builder
-WORKDIR /code
+####################################################################################################
+## Builder
+####################################################################################################
+FROM rust:latest AS builder
 
-# Download crates-io index and fetch dependency code.
-# This step avoids needing to spend time on every build downloading the index
-# which can take a long time within the docker context. Docker will cache it.
-RUN USER=root cargo init
-COPY Cargo.toml Cargo.toml
-RUN cargo fetch
+RUN rustup target add x86_64-unknown-linux-musl
+RUN apt update && apt install -y musl-tools musl-dev
+RUN update-ca-certificates
 
-# copy app files
-COPY src src
+# Create appuser
+ENV USER=ilix_server
+ENV UID=10001
 
-# compile app
-RUN cargo build --release
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    "${USER}"
 
-###############
-## run stage ##
-###############
-FROM debian:bullseye-slim
-WORKDIR /app
+WORKDIR /ilix_server
 
-# copy server binary from build stage
-COPY --from=builder /code/target/release/ilix-server ilix-server
+COPY ./ .
 
-# set user to non-root unless root is required for your app
-USER 1001
+RUN cargo build --target x86_64-unknown-linux-musl --release
 
-# indicate what port the server is running on
-EXPOSE 3000
+####################################################################################################
+## Final image
+####################################################################################################
+FROM alpine
 
-# run server
-CMD [ "/app/ilix-server" ]
+# Import from builder.
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+WORKDIR /ilix_server
+
+# Copy our build
+COPY --from=builder /ilix_server/target/x86_64-unknown-linux-musl/release/ilix_server ./
+
+# Copy app required files & dirs
+COPY --from=builder /ilix_server/tmp ./tmp
+COPY --from=builder /ilix_server/Assets ./Assets
+COPY --from=builder /ilix_server/prod.env ./.env
+
+# Use an unprivileged user. I don't use this user here because my app need a root access
+# USER ilix_server:ilix_server
+
+CMD ["/ilix_server/ilix_server"]
