@@ -20,3 +20,16 @@ export const pushToast = (msg: string, duration = ToastDuration.SHORT) =>
     duration,
     duration === ToastDuration.SHORT ? ToastAndroid.SHORT : ToastAndroid.LONG
   );
+
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, rej) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const fileB64 = reader.result?.toString();
+      if (!fileB64) return rej();
+      resolve(fileB64);
+    };
+    reader.onerror = rej;
+    reader.readAsDataURL(blob);
+  });
+}

@@ -5,6 +5,7 @@ import {
   FunctionResult,
   ServerResponse,
 } from "./types/interfaces";
+import { blobToBase64 } from "./utils";
 
 type GetRoutes = "/pool/{}" | "/file-transfer/{}/{}/all";
 type GetPath<T extends GetRoutes> = T extends "/pool/{}"
@@ -19,7 +20,9 @@ type GetReturns<T extends GetRoutes> = T extends "/pool/{}"
   : never;
 
 const SERVER_BASE_URL =
-  process.env.NODE_ENV === "development" ? "http://127.0.0.1:3000" : "";
+  process.env.NODE_ENV === "development"
+    ? "https://904e-193-32-126-236.ngrok-free.app"
+    : "";
 
 export default class ApiClient {
   public static async get<T extends GetRoutes>(
@@ -39,44 +42,37 @@ export default class ApiClient {
 
 export const HandleGetFileAndSave = async (
   file_id: string,
-  filename: string,
-  cb?: (progress: number) => void
+  filename: string
 ): Promise<FunctionResult> => {
-  const callback = (dlProgress: {
-    totalBytesWritten: number;
-    totalBytesExpectedToWrite: number;
-  }) => {
-    const progress =
-      dlProgress.totalBytesWritten / dlProgress.totalBytesExpectedToWrite;
-    cb && cb(progress);
-  };
-
-  /* Check if the app directory exists, if not create it */
-  const appDirPath = FileSystem.documentDirectory + "ilix/";
-  try {
-    const appDirInfo = await FileSystem.getInfoAsync(appDirPath);
-    if (!appDirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(appDirPath, {
-        intermediates: true,
-      });
-    }
-  } catch (e) {
-    return { succeed: false, reason: "Couldn't create app directory" };
-  }
-
-  /* Download File from api */
-  const call_url = `${SERVER_BASE_URL}/files/${file_id}`;
-  console.log({ call_url });
-  const downloadResumable = FileSystem.createDownloadResumable(
-    call_url,
-    appDirPath + filename,
-    {},
-    cb && callback
-  );
+  const permissions =
+    await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+  if (!permissions.granted)
+    return { succeed: false, reason: "permission not granted" };
 
   try {
+    /* Download File from api */
+    const call_url = `${SERVER_BASE_URL}/files/${file_id}`;
+    const resp = await fetch(call_url);
+    if (!resp.ok)
+      return { succeed: false, reason: "server failed to fetch file" };
+
+    const fileBlob = await resp.blob();
+    const base64File = await blobToBase64(fileBlob);
+
+    const mimeType = resp.headers.get("content-type")?.split(";")[0];
+    if (typeof mimeType !== "string")
+      return { succeed: false, reason: "bad headers returned from server" };
+
     /* Save file to user storage in the app dir */
-    await downloadResumable.downloadAsync();
+    const uri = await FileSystem.StorageAccessFramework.createFileAsync(
+      permissions.directoryUri,
+      filename.replace(/^\/+|\/+$/g, "").split(".")[0],
+      mimeType
+    );
+    await FileSystem.writeAsStringAsync(uri, base64File.split("base64,")[1], {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
     return { succeed: true };
   } catch (e) {
     return { succeed: false, reason: e as string };

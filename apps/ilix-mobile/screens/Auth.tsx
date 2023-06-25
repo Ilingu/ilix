@@ -102,19 +102,6 @@ const Join = ({ navigation }: JoinNavigationProps) => {
   const [SyncCode, setSyncCode] = useState("");
   const SubmitJoinReq = () => {};
 
-  // Test to see if file download works / will be deleted next commit
-  useEffect(() => {
-    const doAsync = async () => {
-      const res = await HandleGetFileAndSave(
-        "64986ad940b8cb54e32ecf74",
-        "Plain.txt",
-        console.log
-      );
-      console.log({ res });
-    };
-    doAsync();
-  }, []);
-
   return (
     <SafeAreaProvider>
       <ParticleView
