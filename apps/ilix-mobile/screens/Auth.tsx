@@ -18,6 +18,7 @@ import Button from "../components/design/Button";
 import { RootStackParamList } from "../App";
 import { pushToast } from "../lib/utils";
 import PreventNavHook from "../lib/hooks/PreventNav";
+import ApiClient, { HandleGetFileAndSave } from "../lib/ApiClient";
 
 type NestedStackParamList = {
   Auth: undefined;
@@ -29,7 +30,7 @@ const { Screen, Navigator } =
 
 type NavigationProps = NativeStackScreenProps<RootStackParamList, "Auth">;
 export default function AuthRouter(nav: NavigationProps) {
-  PreventNavHook(nav);
+  PreventNavHook(nav, true);
 
   return (
     <Navigator
@@ -47,6 +48,8 @@ type NewPoolNavigationProps = NativeStackScreenProps<
   "NewPool"
 >;
 const NewPool = ({ navigation }: NewPoolNavigationProps) => {
+  const SubmitNewPool = async () => {};
+
   return (
     <SafeAreaProvider>
       <ParticleView
@@ -64,7 +67,8 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
             style={tw`text-2xl text-center font-bold mb-3 pr-3 text-[${ColorScheme.TEXT}]`}
           >
             <FontAwesome5 name="user-plus" size={16} color={ColorScheme.TEXT} />{" "}
-            Sign up to <Text style={{ color: ColorScheme.PRIMARY }}>Ilix</Text>
+            Create New <Text style={{ color: ColorScheme.PRIMARY }}>Ilix</Text>{" "}
+            Pool
           </Text>
           <View style={tw`px-3`}>
             <Button
@@ -96,6 +100,20 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
 type JoinNavigationProps = NativeStackScreenProps<NestedStackParamList, "Join">;
 const Join = ({ navigation }: JoinNavigationProps) => {
   const [SyncCode, setSyncCode] = useState("");
+  const SubmitJoinReq = () => {};
+
+  // Test to see if file download works / will be deleted next commit
+  useEffect(() => {
+    const doAsync = async () => {
+      const res = await HandleGetFileAndSave(
+        "64986ad940b8cb54e32ecf74",
+        "Plain.txt",
+        console.log
+      );
+      console.log({ res });
+    };
+    doAsync();
+  }, []);
 
   return (
     <SafeAreaProvider>

@@ -7,6 +7,7 @@ import {
 } from "./SecureStore";
 import * as Device from "expo-device";
 import { Hash, IsEmptyString } from "./utils";
+import * as Application from "expo-application";
 
 export interface AuthShape {
   logged_in: boolean;
@@ -15,9 +16,16 @@ export interface AuthShape {
   device_id?: string;
 }
 
-const GetDeviceId = (): string => {
+const GetDeviceId = async (): Promise<string> => {
+  let installationTime = "";
+  try {
+    installationTime = (
+      await Application.getInstallationTimeAsync()
+    ).toISOString();
+  } catch (_) {}
+
   return Hash(
-    `${Device.brand}-${Device.deviceName}-${Device.manufacturer}-${Device.modelName}-${Device.osName}-${Device.totalMemory}-${Device.DeviceType}`
+    `${Application.androidId}-${Device.brand}-${Device.deviceName}-${Device.manufacturer}-${Device.modelName}-${Device.osName}-${installationTime}`
   );
 };
 
@@ -25,7 +33,7 @@ export const defaultAuthState = async (): Promise<AuthShape> => {
   let { succeed: id_succeed, data: DeviceId } =
     await GetFromSecureStore<string>(DEVICE_ID_KEY);
   if (!id_succeed || !DeviceId) {
-    DeviceId = GetDeviceId();
+    DeviceId = await GetDeviceId();
     await SaveToSecureStore(DEVICE_ID_KEY, DeviceId);
   }
   const { succeed: kp_succeed, data: key_phrase } =

@@ -5,7 +5,7 @@ https://reactnavigation.org/docs/getting-started
 https://github.com/jaredh159/tailwind-react-native-classnames
 https://www.youtube.com/watch?v=I7POH4acHV8
 https://oblador.github.io/react-native-vector-icons/
-https://github.com/react-native-device-info/react-native-device-info
+https://docs.expo.dev/versions/latest/sdk/filesystem
 
 - to identify the session: https://docs.expo.dev/versions/latest/sdk/application/
 - Store the phrasekey: https://docs.expo.dev/versions/latest/sdk/securestore/
