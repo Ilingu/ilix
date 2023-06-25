@@ -3,17 +3,10 @@ import {
   createNativeStackNavigator,
 } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
-import {
-  Image,
-  Text,
-  TextInput,
-  TouchableHighlight,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import ColorScheme from "../lib/Theme";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AntDesign from "@expo/vector-icons/AntDesign";
@@ -22,27 +15,38 @@ import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import FadeInView from "../components/animations/FadeIn";
 import ParticleView from "../components/animations/Particles";
 import Button from "../components/design/Button";
+import { RootStackParamList } from "../App";
+import { pushToast } from "../lib/utils";
+import PreventNavHook from "../lib/hooks/PreventNav";
 
 type NestedStackParamList = {
-  SingIn: undefined;
-  SignUp: undefined;
+  Auth: undefined;
+  Join: undefined;
+  NewPool: undefined;
 };
 const { Screen, Navigator } =
   createNativeStackNavigator<NestedStackParamList>();
 
-export default function Auth() {
+type NavigationProps = NativeStackScreenProps<RootStackParamList, "Auth">;
+export default function AuthRouter(nav: NavigationProps) {
+  PreventNavHook(nav);
+
   return (
     <Navigator
-      initialRouteName="SingIn"
+      initialRouteName="Join"
       screenOptions={{ headerShown: false, animation: "slide_from_right" }}
     >
-      <Screen name="SingIn" component={SingIn} />
-      <Screen name="SignUp" component={SignUp} />
+      <Screen name="Join" component={Join} />
+      <Screen name="NewPool" component={NewPool} />
     </Navigator>
   );
 }
 
-const SignUp = () => {
+type NewPoolNavigationProps = NativeStackScreenProps<
+  NestedStackParamList,
+  "NewPool"
+>;
+const NewPool = ({ navigation }: NewPoolNavigationProps) => {
   return (
     <SafeAreaProvider>
       <ParticleView
@@ -89,11 +93,8 @@ const SignUp = () => {
   );
 };
 
-type SignInNavigationProps = NativeStackScreenProps<
-  NestedStackParamList,
-  "SingIn"
->;
-const SingIn = ({ navigation }: SignInNavigationProps) => {
+type JoinNavigationProps = NativeStackScreenProps<NestedStackParamList, "Join">;
+const Join = ({ navigation }: JoinNavigationProps) => {
   const [SyncCode, setSyncCode] = useState("");
 
   return (
@@ -141,7 +142,7 @@ const SingIn = ({ navigation }: SignInNavigationProps) => {
 
             <View style={tw`flex flex-row items-center mt-3 ml-2`}>
               <Text style={tw`italic text-xs`}>New to Ilix? </Text>
-              <TouchableOpacity onPress={() => navigation.push("SignUp")}>
+              <TouchableOpacity onPress={() => navigation.push("NewPool")}>
                 <Text
                   style={tw`italic text-xs text-[${ColorScheme.PRIMARY}] underline`}
                 >

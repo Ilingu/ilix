@@ -1,14 +1,17 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 // Screens
-import Auth from "./screens/Auth";
-import AuthContext, { defaultStore } from "./lib/AuthContext";
-import DetailsScreen from "./screens/Details";
+import AuthRouter from "./screens/Auth";
+import AuthContext from "./lib/Auth";
+import Home from "./screens/Home";
 import { Platform, UIManager } from "react-native";
+import Splash from "./screens/Splash";
+import AuthHook from "./lib/hooks/Auth";
 
 export type RootStackParamList = {
   Auth: undefined;
-  Details: undefined;
+  Splash: undefined;
+  Home: undefined;
 };
 const { Screen, Navigator } = createNativeStackNavigator<RootStackParamList>();
 
@@ -20,15 +23,18 @@ if (
 }
 
 export default function App() {
+  let defaultAuthState = AuthHook();
+
   return (
     <NavigationContainer>
-      <AuthContext.Provider value={defaultStore}>
+      <AuthContext.Provider value={defaultAuthState}>
         <Navigator
-          initialRouteName="Auth"
+          initialRouteName="Splash"
           screenOptions={{ headerShown: false, animation: "slide_from_right" }}
         >
-          <Screen name="Auth" component={Auth} />
-          <Screen name="Details" component={DetailsScreen} />
+          <Screen name="Splash" component={Splash} />
+          <Screen name="Auth" component={AuthRouter} />
+          <Screen name="Home" component={Home} />
         </Navigator>
       </AuthContext.Provider>
     </NavigationContainer>

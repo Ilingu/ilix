@@ -1,5 +1,5 @@
 import { PropsWithChildren, useEffect, useState } from "react";
-import { FlatList, View, ViewStyle, useWindowDimensions } from "react-native";
+import { View, ViewStyle, useWindowDimensions } from "react-native";
 import tw from "twrnc";
 import { DegToRad } from "../../lib/utils";
 
