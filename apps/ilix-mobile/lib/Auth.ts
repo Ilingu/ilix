@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext } from "react";
 import {
   DEVICE_ID_KEY,
   GetFromSecureStore,
@@ -8,12 +8,14 @@ import {
 import * as Device from "expo-device";
 import { Hash, IsEmptyString } from "./utils";
 import * as Application from "expo-application";
+import type { FunctionResult } from "./types/interfaces";
 
 export interface AuthShape {
   logged_in: boolean;
   hasBeenAttempted: boolean;
   pool_key_phrase?: string;
   device_id?: string;
+  setPoolKeyPhrase?: (pool_key_phrase: string) => Promise<FunctionResult>;
 }
 
 const GetDeviceId = async (): Promise<string> => {
