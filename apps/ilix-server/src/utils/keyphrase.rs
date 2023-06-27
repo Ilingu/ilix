@@ -11,6 +11,13 @@ pub struct KeyPhrase {
     pub key_phrase: String,
 }
 
+impl From<&str> for KeyPhrase {
+    fn from(kp: &str) -> Self {
+        KeyPhrase {
+            key_phrase: kp.to_string(),
+        }
+    }
+}
 impl From<String> for KeyPhrase {
     fn from(kp: String) -> Self {
         KeyPhrase { key_phrase: kp }
@@ -66,7 +73,8 @@ impl KeyPhrase {
         Ok(result)
     }
 
-    pub fn verify(right_kp_hash: String, kp_to_verify: String) -> bool {
+    #[allow(dead_code)]
+    pub fn verify(right_kp_hash: String, kp_to_verify: &str) -> bool {
         let hashed_kp_to_verify = match KeyPhrase::from(kp_to_verify).hash() {
             Ok(v) => v,
             Err(_) => return false,

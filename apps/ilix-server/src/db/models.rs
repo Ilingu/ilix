@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
@@ -5,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct DevicesPool {
     pub pool_name: String,
     pub devices_id: Vec<String>,
+    pub devices_id_to_name: HashMap<String, String>,
     pub hashed_key_phrase: String,
 }
 

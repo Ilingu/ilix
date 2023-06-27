@@ -30,16 +30,10 @@ async fn get_all_transfer(
         );
     }
 
-    let db_result = db.client.find_transfers(pool_kp, device_id).await;
+    let db_result = db.client.find_transfers(&pool_kp, &device_id).await;
     match db_result {
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
-        Err(err) => {
-            let err_status_code = match err {
-                ServerErrors::NoDatas => StatusCode::GONE, // I'm trying to say: "no datas at the moment"
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            };
-            ResponsePayload::new(false, &(), Some(err_status_code), Some(err.to_string()))
-        }
+        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
     }
 }
 
@@ -123,12 +117,7 @@ async fn add_transfer(
 
     let db_result = db
         .client
-        .add_transfer(
-            key_phrase.to_owned(),
-            query.from.to_owned(),
-            query.to.to_owned(),
-            files_id.clone(),
-        )
+        .add_transfer(&key_phrase, &query.from, &query.to, files_id.clone())
         .await;
 
     match db_result {
@@ -136,7 +125,7 @@ async fn add_transfer(
         Err(err) => {
             // failed to add trasnfer, delete all added files
             for file_id in files_id {
-                let _ = db.client.delete_file(file_id.to_owned()).await;
+                let _ = db.client.delete_file(&file_id).await;
             }
 
             let err_status_code = match err {
@@ -169,7 +158,7 @@ async fn delete_transfer(
 
     let db_result = db
         .client
-        .delete_transfer(pool_kp, device_id, transfer_id)
+        .delete_transfer(&pool_kp, &device_id, &transfer_id)
         .await;
 
     let files_id_to_delete = match db_result {
@@ -184,16 +173,21 @@ async fn delete_transfer(
         }
     };
 
-    let mut is_err = false;
+    let mut err = None;
     for file_id in files_id_to_delete {
-        is_err = db.client.delete_file(file_id).await.is_err(); // if there is an error, ignore it to keep the loop running and thus to delete others files
+        err = db.client.delete_file(&file_id).await.err(); // if there is an error, ignore it to keep the loop running and thus to delete others files
     }
 
-    if is_err {
+    if let Some(err) = err {
+        let err_status_code = match err {
+            ServerErrors::InvalidObjectId => StatusCode::BAD_REQUEST,
+            _ => StatusCode::MULTI_STATUS,
+        };
+
         ResponsePayload::new(
             false,
             &(),
-            Some(StatusCode::MULTI_STATUS),
+            Some(err_status_code),
             Some("Transfer was deleted but some files were not deleted".to_string()),
         )
     } else {

@@ -28,7 +28,7 @@ async fn get_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> GetFileR
         ));
     }
 
-    let db_result = db.client.get_file(file_id.to_owned()).await;
+    let db_result = db.client.get_file(&file_id).await;
     match db_result {
         Ok((filename, filebuf)) => {
             let filepath = format!("./tmp/{}-{filename}", Uuid::new_v4());
@@ -48,12 +48,17 @@ async fn get_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> GetFileR
             }
         }
         Err(err) => {
+            let err_status_code = match err {
+                ServerErrors::InvalidObjectId => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+
             return Either::Left(ResponsePayload::new(
                 false,
                 &(),
-                None,
+                Some(err_status_code),
                 Some(err.to_string()),
-            ))
+            ));
         }
     };
 
@@ -76,7 +81,7 @@ async fn delete_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> impl 
         );
     }
 
-    let db_result = db.client.remove_transfer_file(file_id.to_owned()).await;
+    let db_result = db.client.remove_transfer_file(&file_id).await;
     if let Err(err) = db_result {
         if err != ServerErrors::NotInTransfer && err != ServerErrors::TransferNotFound {
             return ResponsePayload::new(
@@ -88,9 +93,15 @@ async fn delete_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> impl 
         }
     }
 
-    let db_result = db.client.delete_file(file_id.to_owned()).await;
+    let db_result = db.client.delete_file(&file_id).await;
     match db_result {
         Ok(_) => ResponsePayload::new(true, &(), None, None),
-        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+        Err(err) => {
+            let err_status_code = match err {
+                ServerErrors::InvalidObjectId => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            ResponsePayload::new(false, &(), Some(err_status_code), Some(err.to_string()))
+        }
     }
 }

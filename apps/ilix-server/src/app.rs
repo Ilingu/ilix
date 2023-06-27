@@ -5,9 +5,7 @@ use crate::utils::is_prod;
 
 #[derive(Debug, PartialEq)]
 pub enum ServerErrors<'a> {
-    NoDatas,
     MongoError,
-    // HashFailed,
     DictionnaryNotFound,
     InvalidObjectId,
     PoolNotFound,

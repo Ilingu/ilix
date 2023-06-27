@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -13,6 +13,7 @@ use tokio_stream::StreamExt;
 
 use crate::{
     app::ServerErrors,
+    services::pool::NewPoolPayload,
     utils::{keyphrase::KeyPhrase, KEY_PHRASE_LEN},
 };
 
@@ -23,14 +24,16 @@ use super::{
 
 #[async_trait]
 pub trait DevicePoolsCollection {
-    async fn get_pool(&self, key_phrase: String) -> Result<DevicesPool, ServerErrors>;
+    async fn get_pool(&self, key_phrase: &str) -> Result<DevicesPool, ServerErrors>;
+    async fn new_pool(&self, args: NewPoolPayload) -> Result<String, ServerErrors>;
     async fn join_pool(
         &self,
-        key_phrase: String,
-        device_id: String,
+        key_phrase: &str,
+        device_id: &str,
+        device_name: &str,
     ) -> Result<DevicesPool, ServerErrors>;
-    async fn leave_pool(&self, key_phrase: String, device_id: String) -> Result<(), ServerErrors>;
-    async fn new_pool(&self, name: String, root_device_id: String) -> Result<String, ServerErrors>;
+    async fn leave_pool(&self, key_phrase: &str, device_id: &str) -> Result<(), ServerErrors>;
+    async fn delete_pool(&self, key_phrase: &str) -> Result<(), ServerErrors>;
     async fn create_pool_hashed_kp_index(&self) -> Result<()>;
 }
 
@@ -53,7 +56,7 @@ lazy_static! {
 
 #[async_trait]
 impl DevicePoolsCollection for Client {
-    async fn get_pool(&self, key_phrase: String) -> Result<DevicesPool, ServerErrors> {
+    async fn get_pool(&self, key_phrase: &str) -> Result<DevicesPool, ServerErrors> {
         let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
         let find_report = self
             .database(DB_NAME)
@@ -70,20 +73,24 @@ impl DevicePoolsCollection for Client {
 
     async fn join_pool(
         &self,
-        key_phrase: String,
-        device_id: String,
+        key_phrase: &str,
+        device_id: &str,
+        device_name: &str,
     ) -> Result<DevicesPool, ServerErrors> {
-        let hashed_kp = KeyPhrase::from(key_phrase.clone()).hash()?;
+        let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
+
+        let obj_entry = format!("devices_id_to_name.{device_id}");
         let update_report = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
             .update_one(
                 doc! {"hashed_key_phrase": hashed_kp},
-                doc! {"$addToSet" : {"devices_id": device_id}},
+                doc! {"$addToSet" : {"devices_id": device_id}, "$set": {obj_entry: device_name}},
                 None,
             )
             .await
             .map_err(|_| ServerErrors::MongoError)?;
+
         if update_report.matched_count == 0 {
             return Err(ServerErrors::PoolNotFound);
         }
@@ -93,14 +100,16 @@ impl DevicePoolsCollection for Client {
         Ok(self.get_pool(key_phrase).await?)
     }
 
-    async fn leave_pool(&self, key_phrase: String, device_id: String) -> Result<(), ServerErrors> {
+    async fn leave_pool(&self, key_phrase: &str, device_id: &str) -> Result<(), ServerErrors> {
         let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
+
+        let obj_entry = format!("devices_id_to_name.{device_id}");
         let update_report = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
             .update_one(
                 doc! {"hashed_key_phrase": hashed_kp},
-                doc! {"$pull" : {"devices_id": device_id}},
+                doc! {"$pull": {"devices_id": device_id}, "$unset": { obj_entry: "" } },
                 None,
             )
             .await
@@ -114,13 +123,17 @@ impl DevicePoolsCollection for Client {
         Ok(())
     }
 
-    async fn new_pool(&self, name: String, root_device_id: String) -> Result<String, ServerErrors> {
+    async fn new_pool(&self, args: NewPoolPayload) -> Result<String, ServerErrors> {
         let kp = KeyPhrase::new(KEY_PHRASE_LEN)?;
         let hashed_kp = kp.hash()?;
 
+        let mut id_to_name = HashMap::new();
+        id_to_name.insert(args.device_id.clone(), args.device_name);
+
         let devices_pool = DevicesPool {
-            pool_name: name,
-            devices_id: vec![root_device_id],
+            pool_name: args.name,
+            devices_id: vec![args.device_id],
+            devices_id_to_name: id_to_name,
             hashed_key_phrase: hashed_kp,
         };
 
@@ -130,6 +143,39 @@ impl DevicePoolsCollection for Client {
             .await
             .map_err(|_| ServerErrors::MongoError)?;
         Ok(kp.key_phrase)
+    }
+
+    async fn delete_pool(&self, key_phrase: &str) -> Result<(), ServerErrors> {
+        let pool = self.get_pool(key_phrase).await?;
+        let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
+
+        let mut transfers_to_delete = vec![];
+        for id in &pool.devices_id {
+            let mut transfer = self.find_transfers(key_phrase, id).await?;
+            transfers_to_delete.append(&mut transfer);
+        }
+
+        for FilePoolTransferExt {
+            _id, to, files_id, ..
+        } in transfers_to_delete
+        {
+            self.delete_transfer(key_phrase, &to, &_id).await?;
+            for file_id in &files_id {
+                self.delete_file(file_id).await?;
+            }
+        }
+
+        let delete_report = self
+            .database(DB_NAME)
+            .collection::<DevicesPool>(DEVICES_POOL_COLL)
+            .delete_one(doc! {"hashed_key_phrase": hashed_kp }, None)
+            .await
+            .map_err(|_| ServerErrors::MongoError)?;
+        if delete_report.deleted_count == 0 {
+            return Err(ServerErrors::PoolNotFound);
+        }
+
+        Ok(())
     }
 
     /// Creates an index on the "hashed_key_phrase" field to force the values to be unique.
@@ -146,22 +192,22 @@ impl DevicePoolsCollection for Client {
 pub trait FilePoolTransferCollection {
     async fn find_transfers(
         &self,
-        key_phrase: String,
-        device_id: String,
+        key_phrase: &str,
+        device_id: &str,
     ) -> Result<Vec<FilePoolTransferExt>, ServerErrors>;
     async fn add_transfer(
         &self,
-        key_phrase: String,
-        from: String,
-        to: String,
+        key_phrase: &str,
+        from: &str,
+        to: &str,
         files_id: Vec<String>,
     ) -> Result<(), ServerErrors>;
-    async fn remove_transfer_file(&self, file_id: String) -> Result<(), ServerErrors>;
+    async fn remove_transfer_file(&self, file_id: &str) -> Result<(), ServerErrors>;
     async fn delete_transfer(
         &self,
-        key_phrase: String,
-        device_id: String,
-        transfer_id: String,
+        key_phrase: &str,
+        device_id: &str,
+        transfer_id: &str,
     ) -> Result<Vec<String>, ServerErrors>;
     async fn create_transfer_hashed_kp_index(&self) -> Result<()>;
 }
@@ -170,8 +216,8 @@ pub trait FilePoolTransferCollection {
 impl FilePoolTransferCollection for Client {
     async fn find_transfers(
         &self,
-        key_phrase: String,
-        device_id: String,
+        key_phrase: &str,
+        device_id: &str,
     ) -> Result<Vec<FilePoolTransferExt>, ServerErrors> {
         let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
         let filter = doc! {"pool_hashed_key_phrase": hashed_kp, "to": device_id};
@@ -191,7 +237,7 @@ impl FilePoolTransferCollection for Client {
         }
 
         if files_info.is_empty() {
-            return Err(ServerErrors::NoDatas);
+            return Ok(vec![]);
         }
 
         let files_info = files_info
@@ -209,22 +255,24 @@ impl FilePoolTransferCollection for Client {
 
     async fn add_transfer(
         &self,
-        key_phrase: String,
-        from: String,
-        to: String,
+        key_phrase: &str,
+        from: &str,
+        to: &str,
         files_id: Vec<String>,
     ) -> Result<(), ServerErrors> {
-        let hashed_kp = KeyPhrase::from(key_phrase.clone()).hash()?;
+        let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
         let data_to_insert = FilePoolTransfer {
             _id: ObjectId::new(), // whatever, this won't get serialized
             pool_hashed_key_phrase: hashed_kp,
-            to: to.clone(),
-            from: from.clone(),
+            to: to.to_owned(),
+            from: from.to_owned(),
             files_id,
         };
 
         let pool = self.get_pool(key_phrase).await?;
-        if !pool.devices_id.contains(&from) || !pool.devices_id.contains(&to) {
+        if !pool.devices_id.contains(&from.to_string())
+            || !pool.devices_id.contains(&to.to_string())
+        {
             return Err(ServerErrors::NotInPool);
         }
 
@@ -236,12 +284,12 @@ impl FilePoolTransferCollection for Client {
         Ok(()) // the transfer id don't get transmitted to the user because it's not his anymore
     }
 
-    async fn remove_transfer_file(&self, file_id: String) -> Result<(), ServerErrors> {
+    async fn remove_transfer_file(&self, file_id: &str) -> Result<(), ServerErrors> {
         let update_report = self
             .database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
             .update_one(
-                doc! {"files_id": file_id.clone()},
+                doc! {"files_id": file_id},
                 doc! {"$pull" : {"files_id": file_id}},
                 None,
             )
@@ -258,13 +306,13 @@ impl FilePoolTransferCollection for Client {
 
     async fn delete_transfer(
         &self,
-        key_phrase: String,
-        to_device_id: String,
-        transfer_id: String,
+        key_phrase: &str,
+        to_device_id: &str,
+        transfer_id: &str,
     ) -> Result<Vec<String>, ServerErrors> {
         let hashed_kp = KeyPhrase::from(key_phrase).hash()?;
-        let id = ObjectId::from_str(&transfer_id).map_err(|_| ServerErrors::InvalidObjectId)?;
-        let filter = doc! {"pool_hashed_key_phrase": hashed_kp, "to": to_device_id, "_id":id };
+        let id = ObjectId::from_str(transfer_id).map_err(|_| ServerErrors::InvalidObjectId)?;
+        let filter = doc! {"pool_hashed_key_phrase": hashed_kp, "to": to_device_id, "_id": id };
         let find_report = self
             .database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
@@ -288,9 +336,9 @@ impl FilePoolTransferCollection for Client {
 
 #[async_trait]
 pub trait FileStorageGridFS {
-    async fn get_file(&self, file_id: String) -> Result<(String, Vec<u8>), ServerErrors>;
+    async fn get_file(&self, file_id: &str) -> Result<(String, Vec<u8>), ServerErrors>;
     async fn add_file(&self, filename: &str, file_buffer: &[u8]) -> Result<String, ServerErrors>;
-    async fn delete_file(&self, file_id: String) -> Result<(), ServerErrors>;
+    async fn delete_file(&self, file_id: &str) -> Result<(), ServerErrors>;
 }
 
 lazy_static! {
@@ -304,10 +352,10 @@ lazy_static! {
 
 #[async_trait]
 impl FileStorageGridFS for Client {
-    async fn get_file(&self, file_id: String) -> Result<(String, Vec<u8>), ServerErrors> {
+    async fn get_file(&self, file_id: &str) -> Result<(String, Vec<u8>), ServerErrors> {
         let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
 
-        let id = ObjectId::from_str(&file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
+        let id = ObjectId::from_str(file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
         let (mut cursor, filename) = bucket
             .open_download_stream_with_filename(id)
             .await
@@ -324,9 +372,9 @@ impl FileStorageGridFS for Client {
             .map_err(|_| ServerErrors::MongoError)?;
         Ok(id.to_string())
     }
-    async fn delete_file(&self, file_id: String) -> Result<(), ServerErrors> {
+    async fn delete_file(&self, file_id: &str) -> Result<(), ServerErrors> {
         let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
-        let id = ObjectId::from_str(&file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
+        let id = ObjectId::from_str(file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
         bucket
             .delete(id)
             .await

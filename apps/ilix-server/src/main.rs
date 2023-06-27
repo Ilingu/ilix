@@ -13,7 +13,7 @@ use env_logger::Env;
 use services::{
     file_transfer::{add_transfer, delete_transfer, get_all_transfer},
     files::{delete_file, get_file},
-    pool::{get_pool, join_pool, leave_pool, new_pool},
+    pool::{delete_pool, get_pool, join_pool, leave_pool, new_pool},
 };
 use utils::console_log;
 
@@ -57,7 +57,8 @@ async fn main() -> std::io::Result<()> {
                     .service(new_pool)
                     .service(get_pool)
                     .service(join_pool)
-                    .service(leave_pool),
+                    .service(leave_pool)
+                    .service(delete_pool),
             )
             .service(
                 web::scope("/file-transfer")
