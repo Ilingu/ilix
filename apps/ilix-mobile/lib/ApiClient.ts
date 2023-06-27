@@ -7,16 +7,85 @@ import {
 } from "./types/interfaces";
 import { blobToBase64 } from "./utils";
 
-type GetRoutes = "/pool/{}" | "/file-transfer/{}/{}/all";
-type GetPath<T extends GetRoutes> = T extends "/pool/{}"
+// Get
+type GetRoutes = "/pool/{pool_kp}" | "/file-transfer/{pool_kp}/{device_id}/all";
+type GetPath<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   ? { pool_kp: string }
-  : T extends "/file-transfer/{}/{}/all"
+  : T extends "/file-transfer/{pool_kp}/{device_id}/all"
   ? { pool_kp: string; device_id: string }
   : never;
-type GetReturns<T extends GetRoutes> = T extends "/pool/{}"
+type GetReturns<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   ? DevicesPool
-  : T extends "/file-transfer/{}/{}/all"
+  : T extends "/file-transfer/{pool_kp}/{device_id}/all"
   ? FilePoolTransfer
+  : never;
+
+// Post
+type PostRoutes =
+  | "/pool/new"
+  | "/file-transfer/{pool_kp}/add?from={from}&to={to}";
+type PostPath<T extends PostRoutes> =
+  T extends "/file-transfer/{pool_kp}/add?from={from}&to={to}"
+    ? { pool_kp: string }
+    : undefined;
+type PostQuery<T extends PostRoutes> =
+  T extends "/file-transfer/{pool_kp}/add?from={from}&to={to}"
+    ? { from: string; to: string }
+    : undefined;
+type PostBody<T extends PostRoutes> = T extends "/pool/new"
+  ? {
+      name: string;
+      device_id: string;
+      device_name: string;
+    }
+  : undefined;
+type PostReturns<T extends PostRoutes> = T extends "/pool/new"
+  ? string
+  : T extends "/file-transfer/{pool_kp}/add?from={from}&to={to}"
+  ? null
+  : never;
+
+// Put
+type PutRoutes = "/pool/{pool_kp}/join";
+type PutPath<T extends PutRoutes> = T extends "/pool/{pool_kp}/join"
+  ? { pool_kp: string }
+  : undefined;
+type PutBody<T extends PutRoutes> = T extends "/pool/{pool_kp}/join"
+  ? {
+      device_id: string;
+      device_name: string;
+    }
+  : undefined;
+type PutReturns<T extends PutRoutes> = T extends "/pool/{pool_kp}/join"
+  ? DevicesPool
+  : never;
+
+// Delete
+type DeleteRoutes =
+  | "/pool/{pool_kp}"
+  | "/pool/{pool_kp}/leave"
+  | "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
+  | "/files/{file_id}";
+type DeletePath<T extends DeleteRoutes> = T extends
+  | "/pool/{pool_kp}"
+  | "/pool/{pool_kp}/leave"
+  ? { pool_kp: string }
+  : T extends "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
+  ? { pool_kp: string; device_id: string; transfer_id: string }
+  : T extends "/files/{file_id}"
+  ? { file_id: string }
+  : undefined;
+type DeleteBody<T extends DeleteRoutes> = T extends "/pool/{pool_kp}/leave"
+  ? {
+      device_id: string;
+    }
+  : undefined;
+type DeleteReturns<T extends DeleteRoutes> = T extends
+  | "/pool/{pool_kp}"
+  | "/pool/{pool_kp}/leave"
+  | "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
+  | "/files/{file_id}"
+  ? null
   : never;
 
 const SERVER_BASE_URL =
@@ -27,16 +96,60 @@ const SERVER_BASE_URL =
 export default class ApiClient {
   public static async get<T extends GetRoutes>(
     route: T,
-    path: GetPath<T>,
-    cb?: (progress: number) => void
+    path: GetPath<T>
   ): Promise<FunctionResult<GetReturns<T>>> {
     let built_uri = route as string;
-    for (const pathVal of Object.values(path)) {
-      built_uri = built_uri.replace("{}", pathVal);
-    }
+    if (path) built_uri = build_uri(built_uri, path);
 
-    let call_url = `${SERVER_BASE_URL}${built_uri}`;
+    const call_url = `${SERVER_BASE_URL}${built_uri}`;
     return await HandleRequest(call_url, "GET", undefined);
+  }
+  public static async post<T extends PostRoutes>(
+    route: T,
+    path: PostPath<T>,
+    query: PostQuery<T>,
+    body: PostBody<T>
+  ): Promise<FunctionResult<PostReturns<T>>> {
+    let built_uri = route as string;
+    if (path) built_uri = build_uri(built_uri, path);
+    if (query) built_uri = build_uri(built_uri, query);
+
+    const call_url = `${SERVER_BASE_URL}${built_uri}`;
+    return await HandleRequest(
+      call_url,
+      "POST",
+      body && JSON.stringify(body) // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
+    );
+  }
+  public static async put<T extends PutRoutes>(
+    route: T,
+    path: PutPath<T>,
+    body: PutBody<T>
+  ): Promise<FunctionResult<PutReturns<T>>> {
+    let built_uri = route as string;
+    if (path) built_uri = build_uri(built_uri, path);
+
+    const call_url = `${SERVER_BASE_URL}${built_uri}`;
+    return await HandleRequest(
+      call_url,
+      "PUT",
+      body && JSON.stringify(body) // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
+    );
+  }
+  public static async delete<T extends DeleteRoutes>(
+    route: T,
+    path: DeletePath<T>,
+    body: DeleteBody<T>
+  ): Promise<FunctionResult<DeleteReturns<T>>> {
+    let built_uri = route as string;
+    if (path) built_uri = build_uri(built_uri, path);
+
+    const call_url = `${SERVER_BASE_URL}${built_uri}`;
+    return await HandleRequest(
+      call_url,
+      "DELETE",
+      body && JSON.stringify(body) // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
+    );
   }
 }
 
@@ -128,4 +241,10 @@ const HandleRequest = async <T = never>(
       reason: "Client failed to send request to the server",
     };
   }
+};
+
+const build_uri = (uri: string, datas: object): string => {
+  for (const [key, val] of Object.entries(datas))
+    uri = uri.replace(`{${key}}`, val);
+  return uri;
 };
