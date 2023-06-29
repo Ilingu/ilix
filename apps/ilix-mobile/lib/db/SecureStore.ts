@@ -1,10 +1,10 @@
-import { FunctionResult } from "./types/interfaces";
+import { FunctionResult } from "../types/interfaces";
 import * as SecureStore from "expo-secure-store";
 
 export const KEY_PHRASE_KEY = "key_phrase";
 export const DEVICE_ID_KEY = "device_id";
 
-export const SaveToSecureStore = async (
+export const SS_Store = async (
   key: string,
   value: any
 ): Promise<FunctionResult> => {
@@ -16,7 +16,7 @@ export const SaveToSecureStore = async (
   }
 };
 
-export const GetFromSecureStore = async <T = never>(
+export const SS_Get = async <T = never>(
   key: string
 ): Promise<FunctionResult<T>> => {
   try {

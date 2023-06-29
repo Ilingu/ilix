@@ -5,7 +5,7 @@ export interface FunctionResult<T = never> {
 }
 
 export interface ServerResponse<T = never> {
-  succeed: boolean;
+  success: boolean;
   status_code: number;
   data?: T;
   reason?: string;
@@ -15,6 +15,7 @@ export interface ServerResponse<T = never> {
 export interface DevicesPool {
   pool_name: string;
   devices_id: string[];
+  devices_id_to_name: { [device_id: string]: string };
 }
 
 export interface FilePoolTransfer {

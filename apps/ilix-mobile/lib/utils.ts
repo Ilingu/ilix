@@ -33,3 +33,19 @@ export function blobToBase64(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+export const IsCodeOk = (code: string): boolean => code.split("-").length == 20;
+
+export const range = (from: number, to: number): number[] => {
+  if (from == to) return [from];
+
+  const rev = from > to;
+  if (rev) [from, to] = [to, from];
+
+  const range = Array(to - from + 1)
+    .fill(0)
+    .map((_, idx) => from + idx);
+
+  if (rev) range.reverse();
+  return range;
+};

@@ -90,7 +90,7 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
 
 const SERVER_BASE_URL =
   process.env.NODE_ENV === "development"
-    ? "https://904e-193-32-126-236.ngrok-free.app"
+    ? "https://472d-193-32-126-219.ngrok-free.app"
     : "";
 
 export default class ApiClient {
@@ -210,28 +210,31 @@ const HandleRequest = async <T = never>(
 
     let respBody: ServerResponse<string>;
     try {
-      respBody = JSON.parse(await resp.json());
-    } catch (_) {
-      return { succeed: is_no_body_ok };
+      respBody = await resp.json();
+    } catch (err) {
+      return { succeed: is_no_body_ok, reason: "failed to parse body" };
     }
 
-    if (!("succeed" in respBody) || !("status_code" in respBody))
+    if (!("success" in respBody) || !("status_code" in respBody))
       return {
         succeed: false,
-        reason: "",
+        reason: "wrong data type",
       };
 
     let parsedData: T | undefined = undefined;
     if ("data" in respBody && typeof respBody.data === "string") {
       try {
         parsedData = JSON.parse(respBody.data);
-      } catch (error) {
-        return { succeed: is_no_data_ok, reason: respBody.reason };
+      } catch (_) {
+        return {
+          succeed: is_no_data_ok,
+          reason: respBody.reason ?? "failed to parse data",
+        };
       }
     }
 
     return {
-      succeed: respBody.succeed,
+      succeed: respBody.success,
       data: parsedData,
       reason: respBody.reason,
     };

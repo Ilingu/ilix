@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { AuthShape, defaultAuthState } from "../Auth";
+import { AuthShape, GetStoredAuthState } from "../Context/Auth";
 import type { FunctionResult } from "../types/interfaces";
-import { KEY_PHRASE_KEY, SaveToSecureStore } from "../SecureStore";
+import { KEY_PHRASE_KEY, SS_Store } from "../db/SecureStore";
 
 const AuthHook = (): AuthShape => {
   const [authState, setAuthState] = useState<AuthShape>({
     logged_in: false,
-    hasBeenAttempted: false,
+    loading: true,
   });
 
   const setInitialState = async () => {
-    const defaultState = await defaultAuthState();
+    const defaultState = await GetStoredAuthState();
     defaultState.setPoolKeyPhrase = setPoolKeyPhrase;
     setAuthState(defaultState);
   };
@@ -22,7 +22,7 @@ const AuthHook = (): AuthShape => {
       pool_key_phrase,
       ...prev,
     }));
-    return await SaveToSecureStore(KEY_PHRASE_KEY, pool_key_phrase);
+    return await SS_Store(KEY_PHRASE_KEY, pool_key_phrase);
   };
 
   useEffect(() => {
