@@ -27,3 +27,15 @@ pub fn console_log(msg: &str, lvl: Level) {
         }
     }
 }
+
+pub trait TrimObjectId {
+    fn trim_object_id(&self) -> Self;
+}
+
+impl TrimObjectId for String {
+    fn trim_object_id(&self) -> Self {
+        self.trim_start_matches("ObjectId(\"")
+            .trim_end_matches("\")")
+            .to_string()
+    }
+}

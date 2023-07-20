@@ -1,3 +1,4 @@
+use actix_web::web;
 use anyhow::Result;
 use hex_string::HexString;
 use sha3::{Digest, Sha3_256};
@@ -10,7 +11,7 @@ use crate::app::ServerErrors;
 pub const KEY_PHRASE_LEN: usize = 20;
 
 fn is_key_phrase(str: &str) -> bool {
-    str.split('-').count() != KEY_PHRASE_LEN
+    str.split('-').count() == KEY_PHRASE_LEN
 }
 
 pub struct KeyPhrase(pub String);
@@ -27,10 +28,10 @@ impl TryFrom<&str> for KeyPhrase {
     }
 }
 
-impl TryFrom<actix_web::web::Path<String>> for KeyPhrase {
+impl TryFrom<web::Path<String>> for KeyPhrase {
     type Error = ServerErrors<'static>;
 
-    fn try_from(key_phrase: actix_web::web::Path<String>) -> Result<Self, ServerErrors<'static>> {
+    fn try_from(key_phrase: web::Path<String>) -> Result<Self, ServerErrors<'static>> {
         let kp = key_phrase.into_inner();
         if !is_key_phrase(&kp) {
             return Err(ServerErrors::InvalidKeyPhrase);

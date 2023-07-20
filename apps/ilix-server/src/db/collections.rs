@@ -17,6 +17,7 @@ use crate::{
     utils::{
         encryption::{decrypt_datas, encrypt_datas},
         keyphrase::{KeyPhrase, KEY_PHRASE_LEN},
+        TrimObjectId,
     },
 };
 
@@ -272,7 +273,7 @@ impl FilePoolTransferCollection for Client {
     ) -> Result<String, ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
         let data_to_insert = FilePoolTransfer {
-            _id: ObjectId::new(), // whatever, this won't get serialized
+            _id: ObjectId::new(), // no matter, this won't get serialized
             pool_hashed_key_phrase: hashed_kp,
             to: to.to_owned(),
             from: from.to_owned(),
@@ -292,7 +293,7 @@ impl FilePoolTransferCollection for Client {
             .insert_one(data_to_insert.clone(), None)
             .await
             .map_err(|_| ServerErrors::MongoError)?;
-        Ok(set_report.inserted_id.to_string())
+        Ok(set_report.inserted_id.to_string().trim_object_id())
     }
 
     async fn add_files_to_transfer(
@@ -303,11 +304,12 @@ impl FilePoolTransferCollection for Client {
     ) -> Result<(), ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
 
+        let id = ObjectId::from_str(transfer_id).map_err(|_| ServerErrors::InvalidObjectId)?;
         let update_report = self
             .database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
             .update_one(
-                doc! {"transfer_id": transfer_id, "pool_hashed_key_phrase": hashed_kp},
+                doc! {"_id": id, "pool_hashed_key_phrase": hashed_kp},
                 doc! {"$addToSet": {"files_id": {"$each": files_id }}},
                 None,
             )
@@ -403,13 +405,13 @@ impl FileStorageGridFS for Client {
         let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
 
         let id = ObjectId::from_str(file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
-        let (mut cursor, filename) = bucket
+        let (cursor, filename) = bucket
             .open_download_stream_with_filename(id)
             .await
             .map_err(|_| ServerErrors::MongoError)?;
-        let buffer = cursor.next().await.ok_or(ServerErrors::FileError)?;
 
-        Ok((filename, buffer))
+        let file_buffer = cursor.collect::<Vec<_>>().await.concat();
+        Ok((filename, file_buffer))
     }
     async fn get_and_decrypt_file(
         &self,
@@ -417,7 +419,7 @@ impl FileStorageGridFS for Client {
         key_phrase: &KeyPhrase,
     ) -> Result<(String, Vec<u8>), ServerErrors> {
         let (filename, enc_datas) = self.get_file(file_id).await?;
-        let decrypted_datas = decrypt_datas(&enc_datas, &key_phrase.0)?;
+        let decrypted_datas = decrypt_datas(&key_phrase.0, &enc_datas)?;
         Ok((filename, decrypted_datas))
     }
 
@@ -435,7 +437,7 @@ impl FileStorageGridFS for Client {
         file_buffer: &[u8],
         key_phrase: &KeyPhrase,
     ) -> Result<String, ServerErrors> {
-        let enc_file_buf = encrypt_datas(file_buffer, &key_phrase.0)?;
+        let enc_file_buf = encrypt_datas(&key_phrase.0, file_buffer)?;
         self.add_file(filename, &enc_file_buf).await
     }
 

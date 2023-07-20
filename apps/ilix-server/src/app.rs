@@ -13,7 +13,6 @@ pub enum ServerErrors<'a> {
     AlreadyInPool,
     NotInPool,
     NotInTransfer,
-    FileError,
     EnvVarNotFound,
     ParseError,
     InvalidKeyPhrase,
