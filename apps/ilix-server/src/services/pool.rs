@@ -4,21 +4,18 @@ use serde::Deserialize;
 use crate::{
     app::ServerErrors,
     db::{collections::DevicePoolsCollection, IlixDB},
-    utils::{is_key_phrase, is_str_empty},
+    services::BAD_ARGS_RESP,
+    utils::{is_str_empty, keyphrase::KeyPhrase},
 };
 
 use super::ResponsePayload;
 
-#[get("/{pool_kp}")]
+#[get("/{key_phrase}")]
 async fn get_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> impl Responder {
-    if is_str_empty(&key_phrase) || is_key_phrase(&key_phrase) {
-        return ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Bad Args".to_string()),
-        );
-    }
+    let key_phrase = match KeyPhrase::try_from(key_phrase) {
+        Ok(d) => d,
+        Err(_) => return BAD_ARGS_RESP.clone(),
+    };
 
     let db_result = db.client.get_pool(&key_phrase).await;
     match db_result {
@@ -33,19 +30,18 @@ struct JoinPoolPayload {
     device_name: String,
 }
 
-#[put("/{pool_kp}/join")]
+#[put("/{key_phrase}/join")]
 async fn join_pool(
     db: web::Data<IlixDB>,
     info: web::Json<JoinPoolPayload>,
     key_phrase: web::Path<String>,
 ) -> impl Responder {
-    if is_str_empty(&key_phrase) || is_str_empty(&info.device_id) || is_key_phrase(&key_phrase) {
-        return ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Bad Args".to_string()),
-        );
+    let key_phrase = match KeyPhrase::try_from(key_phrase) {
+        Ok(d) => d,
+        Err(_) => return BAD_ARGS_RESP.clone(),
+    };
+    if is_str_empty(&info.device_id) {
+        return BAD_ARGS_RESP.clone();
     }
 
     let info = info.0;
@@ -73,19 +69,18 @@ struct LeavePoolPayload {
     device_id: String,
 }
 
-#[delete("/{pool_kp}/leave")]
+#[delete("/{key_phrase}/leave")]
 async fn leave_pool(
     db: web::Data<IlixDB>,
     info: web::Json<LeavePoolPayload>,
     key_phrase: web::Path<String>,
 ) -> impl Responder {
-    if is_str_empty(&key_phrase) || is_str_empty(&info.device_id) || is_key_phrase(&key_phrase) {
-        return ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Bad Args".to_string()),
-        );
+    let key_phrase = match KeyPhrase::try_from(key_phrase) {
+        Ok(d) => d,
+        Err(_) => return BAD_ARGS_RESP.clone(),
+    };
+    if is_str_empty(&info.device_id) {
+        return BAD_ARGS_RESP.clone();
     }
 
     let db_result = db.client.leave_pool(&key_phrase, &info.device_id).await;
@@ -126,23 +121,19 @@ async fn new_pool(db: web::Data<IlixDB>, info: web::Json<NewPoolPayload>) -> imp
         );
     }
 
-    let db_result = db.client.new_pool(info.0).await;
+    let db_result = db.client.create_pool(info.0).await;
     match db_result {
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
         Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
     }
 }
 
-#[delete("/{pool_kp}")]
+#[delete("/{key_phrase}")]
 async fn delete_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> impl Responder {
-    if is_str_empty(&key_phrase) || is_key_phrase(&key_phrase) {
-        return ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Bad Args".to_string()),
-        );
-    }
+    let key_phrase = match KeyPhrase::try_from(key_phrase) {
+        Ok(d) => d,
+        Err(_) => return BAD_ARGS_RESP.clone(),
+    };
 
     let db_result = db.client.delete_pool(&key_phrase).await;
     match db_result {

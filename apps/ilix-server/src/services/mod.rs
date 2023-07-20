@@ -7,9 +7,19 @@ use actix_web::{
     http::{header::ContentType, StatusCode},
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
+use once_cell::sync::Lazy;
 use serde::Serialize;
 
-#[derive(Serialize)]
+static BAD_ARGS_RESP: Lazy<ResponsePayload> = Lazy::new(|| {
+    ResponsePayload::new(
+        false,
+        &(),
+        Some(StatusCode::BAD_REQUEST),
+        Some("Bad Args".to_string()),
+    )
+});
+
+#[derive(Serialize, Clone)]
 pub struct ResponsePayload {
     success: bool,
     status_code: u16,

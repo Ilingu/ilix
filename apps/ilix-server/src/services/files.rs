@@ -2,6 +2,7 @@ use std::io::Write;
 
 use actix_files::NamedFile;
 use actix_web::{delete, get, http::StatusCode, web, Either, Responder, Result};
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
@@ -10,25 +11,34 @@ use crate::{
         collections::{FilePoolTransferCollection, FileStorageGridFS},
         IlixDB,
     },
-    utils::is_str_empty,
+    services::BAD_ARGS_RESP,
+    utils::{is_str_empty, keyphrase::KeyPhrase},
 };
 
 use super::ResponsePayload;
 
+#[derive(Deserialize)]
+struct GetFilePayload {
+    key_phrase: String,
+}
+
 // if client wants to get multiple files at once, it musts call async this endpoint and handle the Promises on their own
 type GetFileResult = Either<ResponsePayload, Result<NamedFile>>;
 #[get("/{file_id}")]
-async fn get_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> GetFileResult {
+async fn get_file(
+    db: web::Data<IlixDB>,
+    info: web::Json<GetFilePayload>,
+    file_id: web::Path<String>,
+) -> GetFileResult {
+    let key_phrase = match KeyPhrase::try_from(info.key_phrase.to_owned()) {
+        Ok(d) => d,
+        Err(_) => return Either::Left(BAD_ARGS_RESP.clone()),
+    };
     if is_str_empty(&file_id) {
-        return Either::Left(ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Bad Args".to_string()),
-        ));
+        return Either::Left(BAD_ARGS_RESP.clone());
     }
 
-    let db_result = db.client.get_file(&file_id).await;
+    let db_result = db.client.get_and_decrypt_file(&file_id, &key_phrase).await;
     match db_result {
         Ok((filename, filebuf)) => {
             let filepath = format!("./tmp/{}-{filename}", Uuid::new_v4());
@@ -73,12 +83,7 @@ async fn get_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> GetFileR
 #[delete("/{file_id}")]
 async fn delete_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> impl Responder {
     if is_str_empty(&file_id) {
-        return ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Bad Args".to_string()),
-        );
+        return BAD_ARGS_RESP.clone();
     }
 
     let db_result = db.client.remove_transfer_file(&file_id).await;

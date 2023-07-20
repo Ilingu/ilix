@@ -16,6 +16,9 @@ pub enum ServerErrors<'a> {
     FileError,
     EnvVarNotFound,
     ParseError,
+    InvalidKeyPhrase,
+    EncryptionError,
+    DecryptionError,
     Custom(&'a str),
 }
 

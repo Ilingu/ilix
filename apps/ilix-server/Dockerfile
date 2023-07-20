@@ -3,40 +3,29 @@
 ####################################################################################################
 ## Builder
 ####################################################################################################
-FROM rust:latest AS builder
-
-RUN rustup target add x86_64-unknown-linux-musl
-RUN apt update && apt install -y musl-tools musl-dev
-RUN update-ca-certificates
-
-# Create appuser
-ENV USER=ilix_server
-ENV UID=10001
-
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}"
-
+FROM messense/rust-musl-cross:x86_64-musl as chef
+RUN cargo install cargo-chef
 WORKDIR /ilix_server
 
-COPY ./ .
+FROM chef AS planner
+# Copy source code
+COPY . .
+# Generate info for caching dependencies
+RUN cargo chef prepare --recipe-path recipe.json
 
-RUN cargo build --target x86_64-unknown-linux-musl --release
+FROM chef AS builder
+COPY --from=planner /ilix_server/recipe.json recipe.json
+# Build the application & cache dependencies
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
+# Copy source code from previous stage
+COPY . .
+# Build application
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
 ####################################################################################################
 ## Final image
 ####################################################################################################
-FROM alpine
-
-# Import from builder.
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-
+FROM scratch
 WORKDIR /ilix_server
 
 # Copy our build
@@ -47,7 +36,5 @@ COPY --from=builder /ilix_server/tmp ./tmp
 COPY --from=builder /ilix_server/Assets ./Assets
 COPY --from=builder /ilix_server/prod.env ./.env
 
-# Use an unprivileged user. I don't use this user here because my app need a root access
-# USER ilix_server:ilix_server
-
-CMD ["/ilix_server/ilix_server"]
+ENTRYPOINT ["/ilix_server/ilix_server"]
+EXPOSE 3000

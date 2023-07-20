@@ -7,20 +7,48 @@ use rand::Rng;
 
 use crate::app::ServerErrors;
 
-pub struct KeyPhrase {
-    pub key_phrase: String,
+pub const KEY_PHRASE_LEN: usize = 20;
+
+fn is_key_phrase(str: &str) -> bool {
+    str.split('-').count() != KEY_PHRASE_LEN
 }
 
-impl From<&str> for KeyPhrase {
-    fn from(kp: &str) -> Self {
-        KeyPhrase {
-            key_phrase: kp.to_string(),
+pub struct KeyPhrase(pub String);
+
+impl TryFrom<&str> for KeyPhrase {
+    type Error = ServerErrors<'static>;
+
+    fn try_from(key_phrase: &str) -> Result<Self, ServerErrors<'static>> {
+        if !is_key_phrase(key_phrase) {
+            return Err(ServerErrors::InvalidKeyPhrase);
         }
+
+        Ok(KeyPhrase(key_phrase.to_string()))
     }
 }
-impl From<String> for KeyPhrase {
-    fn from(kp: String) -> Self {
-        KeyPhrase { key_phrase: kp }
+
+impl TryFrom<actix_web::web::Path<String>> for KeyPhrase {
+    type Error = ServerErrors<'static>;
+
+    fn try_from(key_phrase: actix_web::web::Path<String>) -> Result<Self, ServerErrors<'static>> {
+        let kp = key_phrase.into_inner();
+        if !is_key_phrase(&kp) {
+            return Err(ServerErrors::InvalidKeyPhrase);
+        }
+
+        Ok(KeyPhrase(kp))
+    }
+}
+
+impl TryFrom<String> for KeyPhrase {
+    type Error = ServerErrors<'static>;
+
+    fn try_from(key_phrase: String) -> Result<Self, ServerErrors<'static>> {
+        if !is_key_phrase(&key_phrase) {
+            return Err(ServerErrors::InvalidKeyPhrase);
+        }
+
+        Ok(KeyPhrase(key_phrase))
     }
 }
 
@@ -47,9 +75,7 @@ impl KeyPhrase {
             })
             .collect::<Vec<_>>();
 
-        Ok(Self {
-            key_phrase: key_phrase.join("-"),
-        })
+        Ok(Self(key_phrase.join("-")))
     }
 
     pub fn hash(&self) -> Result<String, ServerErrors<'static>> {
@@ -62,7 +88,7 @@ impl KeyPhrase {
         }
 
         let mut hasher = Sha3_256::new();
-        let mut result = self.key_phrase.clone();
+        let mut result = self.0.clone();
 
         for _ in 0..hash_round {
             hasher.update(result.as_bytes());
@@ -75,7 +101,11 @@ impl KeyPhrase {
 
     #[allow(dead_code)]
     pub fn verify(right_kp_hash: String, kp_to_verify: &str) -> bool {
-        let hashed_kp_to_verify = match KeyPhrase::from(kp_to_verify).hash() {
+        let kp = match KeyPhrase::try_from(kp_to_verify) {
+            Ok(d) => d,
+            Err(_) => return false,
+        };
+        let hashed_kp_to_verify = match kp.hash() {
             Ok(v) => v,
             Err(_) => return false,
         };

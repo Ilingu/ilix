@@ -11,7 +11,7 @@ use db::{
 };
 use env_logger::Env;
 use services::{
-    file_transfer::{add_transfer, delete_transfer, get_all_transfer},
+    file_transfer::{add_files_to_transfer, create_transfer, delete_transfer, get_all_transfer},
     files::{delete_file, get_file},
     pool::{delete_pool, get_pool, join_pool, leave_pool, new_pool},
 };
@@ -63,7 +63,8 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/file-transfer")
                     .service(get_all_transfer)
-                    .service(add_transfer)
+                    .service(create_transfer)
+                    .service(add_files_to_transfer)
                     .service(delete_transfer),
             )
             .service(web::scope("/files").service(get_file).service(delete_file))
