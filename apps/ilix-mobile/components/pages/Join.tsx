@@ -40,6 +40,7 @@ import type { AuthNestedStack } from "../../screens/Auth";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import QrCodeScanner from "../qrCode";
+import { MakeKeyPhraseKey } from "../../lib/db/SecureStore";
 
 const [ScreenWidth, ScreenHeight] = [
   Dimensions.get("window").width,
@@ -52,8 +53,9 @@ const QrCodeCenterYPos = ScreenHeight / 2 - 335 / 4 + 2;
 const GAP = 610;
 type JoinNavigationProps = NativeStackScreenProps<AuthNestedStack, "Join">;
 const Join = ({ navigation }: JoinNavigationProps) => {
-  const { device_id, setPoolKeyPhrase } = useContext(AuthContext);
-  const { setPool } = useContext(PoolContext);
+  const { device_id, addPoolKeyPhrase: setPoolKeyPhrase } =
+    useContext(AuthContext);
+  const { addPool } = useContext(PoolContext);
 
   const [SyncCode, setSyncCode] = useState("");
   const [DeviceName, setDeviceName] = useState("");
@@ -136,8 +138,11 @@ const Join = ({ navigation }: JoinNavigationProps) => {
     const { succeed: kpSucceed } = setPoolKeyPhrase
       ? await setPoolKeyPhrase(SyncCodeCopy)
       : { succeed: false };
-    const { succeed: poolSucceed } = setPool
-      ? await setPool(data)
+    const { succeed: poolSucceed } = addPool
+      ? await addPool({
+          SS_key_hashed_kp: MakeKeyPhraseKey(SyncCodeCopy),
+          ...data,
+        })
       : { succeed: false };
 
     if (!kpSucceed || !poolSucceed)

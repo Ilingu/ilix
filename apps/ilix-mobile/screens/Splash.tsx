@@ -15,7 +15,7 @@ export default function Splash({ navigation }: NavigationProps) {
 
   useEffect(() => {
     if (!AuthState.loading && !PoolState.loading) {
-      if (AuthState.logged_in && PoolState.pool !== undefined)
+      if (AuthState.logged_in && PoolState.pools !== undefined)
         navigation.navigate("Home");
       else navigation.navigate("Auth");
     }

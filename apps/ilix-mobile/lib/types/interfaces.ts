@@ -18,6 +18,10 @@ export interface DevicesPool {
   devices_id_to_name: { [device_id: string]: string };
 }
 
+export interface StoredDevicesPool extends DevicesPool {
+  SS_key_hashed_kp: string;
+}
+
 export interface FilePoolTransfer {
   _id: string;
   to: string; // device id

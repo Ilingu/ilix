@@ -15,7 +15,7 @@ export interface AuthShape {
   loading: boolean;
   pool_key_phrase?: string;
   device_id?: string;
-  setPoolKeyPhrase?: (pool_key_phrase: string) => Promise<FunctionResult>;
+  addPoolKeyPhrase?: (pool_key_phrase: string) => Promise<FunctionResult>;
 }
 
 const GetDeviceId = async (): Promise<string> => {

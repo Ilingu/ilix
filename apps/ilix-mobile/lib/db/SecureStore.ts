@@ -1,8 +1,10 @@
 import { FunctionResult } from "../types/interfaces";
 import * as SecureStore from "expo-secure-store";
+import { Hash } from "../utils";
 
-export const KEY_PHRASE_KEY = "key_phrase";
 export const DEVICE_ID_KEY = "device_id";
+
+export const MakeKeyPhraseKey = (key: string) => `key_phrase_${Hash(key)}`;
 
 export const SS_Store = async (
   key: string,

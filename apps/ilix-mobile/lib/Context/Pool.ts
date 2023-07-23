@@ -1,19 +1,21 @@
 import { createContext } from "react";
-import type { DevicesPool, FunctionResult } from "../types/interfaces";
-import { AS_Get, POOL_KEY as POOL_KEY } from "../db/AsyncStorage";
+import type {
+  DevicesPool,
+  FunctionResult,
+  StoredDevicesPool,
+} from "../types/interfaces";
+
+export type StoredPools = {
+  current: number;
+  pools: StoredDevicesPool[];
+};
 
 export interface PoolCtxShape {
-  pool?: DevicesPool;
+  pools?: StoredPools;
   loading: boolean;
-  setPool?: (pool: DevicesPool) => Promise<FunctionResult>;
+  addPool?: (pool: StoredDevicesPool) => Promise<FunctionResult>;
+  setPool?: (new_index: number) => Promise<FunctionResult>;
 }
-
-export const GetStoredPools = async (): Promise<PoolCtxShape> => {
-  const { succeed, data } = await AS_Get<DevicesPool>(POOL_KEY);
-  return !succeed || !data
-    ? { loading: false }
-    : { pool: data, loading: false };
-};
 
 const PoolContext = createContext<PoolCtxShape>({ loading: true });
 export default PoolContext;

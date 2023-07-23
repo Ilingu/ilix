@@ -19,14 +19,16 @@ import { IsEmptyString, pushToast } from "../../lib/utils";
 import ApiClient from "../../lib/ApiClient";
 import AuthContext from "../../lib/Context/Auth";
 import PoolContext from "../../lib/Context/Pool";
+import { MakeKeyPhraseKey } from "../../lib/db/SecureStore";
 
 type NewPoolNavigationProps = NativeStackScreenProps<
   AuthNestedStack,
   "NewPool"
 >;
 const NewPool = ({ navigation }: NewPoolNavigationProps) => {
-  const { device_id, setPoolKeyPhrase } = useContext(AuthContext);
-  const { setPool } = useContext(PoolContext);
+  const { device_id, addPoolKeyPhrase: setPoolKeyPhrase } =
+    useContext(AuthContext);
+  const { addPool } = useContext(PoolContext);
 
   const [PoolName, setPoolName] = useState("");
   const [DeviceName, setDeviceName] = useState("");
@@ -55,11 +57,12 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
     const { succeed: kpSucceed } = setPoolKeyPhrase
       ? await setPoolKeyPhrase(pool_kp)
       : { succeed: false };
-    const { succeed: poolSucceed } = setPool
-      ? await setPool({
+    const { succeed: poolSucceed } = addPool
+      ? await addPool({
           devices_id: [device_id],
           pool_name: PoolNameCopy,
           devices_id_to_name: { device_id: DeviceName },
+          SS_key_hashed_kp: MakeKeyPhraseKey(pool_kp),
         })
       : { succeed: false };
 
