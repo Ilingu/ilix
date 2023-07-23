@@ -19,7 +19,12 @@ export default function Splash({ navigation }: NavigationProps) {
         navigation.navigate("Home");
       else navigation.navigate("Auth");
     }
-  }, [AuthState, PoolState]);
+  }, [
+    AuthState.loading,
+    PoolState.loading,
+    AuthState.logged_in,
+    PoolState.pools,
+  ]);
 
   return (
     <SafeAreaProvider>

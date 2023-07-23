@@ -26,8 +26,7 @@ type NewPoolNavigationProps = NativeStackScreenProps<
   "NewPool"
 >;
 const NewPool = ({ navigation }: NewPoolNavigationProps) => {
-  const { device_id, addPoolKeyPhrase: setPoolKeyPhrase } =
-    useContext(AuthContext);
+  const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
   const { addPool } = useContext(PoolContext);
 
   const [PoolName, setPoolName] = useState("");
@@ -54,16 +53,19 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
       return pushToast(err_msg);
 
     // store datas client-side
-    const { succeed: kpSucceed } = setPoolKeyPhrase
-      ? await setPoolKeyPhrase(pool_kp)
+    const { succeed: kpSucceed } = addPoolKeyPhrase
+      ? await addPoolKeyPhrase(pool_kp, false)
       : { succeed: false };
     const { succeed: poolSucceed } = addPool
-      ? await addPool({
-          devices_id: [device_id],
-          pool_name: PoolNameCopy,
-          devices_id_to_name: { device_id: DeviceName },
-          SS_key_hashed_kp: MakeKeyPhraseKey(pool_kp),
-        })
+      ? await addPool(
+          {
+            devices_id: [device_id],
+            pool_name: PoolNameCopy,
+            devices_id_to_name: { device_id: DeviceName },
+            SS_key_hashed_kp: MakeKeyPhraseKey(pool_kp),
+          },
+          false
+        )
       : { succeed: false };
 
     if (!kpSucceed || !poolSucceed)

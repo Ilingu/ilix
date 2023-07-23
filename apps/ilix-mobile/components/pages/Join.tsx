@@ -53,8 +53,7 @@ const QrCodeCenterYPos = ScreenHeight / 2 - 335 / 4 + 2;
 const GAP = 610;
 type JoinNavigationProps = NativeStackScreenProps<AuthNestedStack, "Join">;
 const Join = ({ navigation }: JoinNavigationProps) => {
-  const { device_id, addPoolKeyPhrase: setPoolKeyPhrase } =
-    useContext(AuthContext);
+  const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
   const { addPool } = useContext(PoolContext);
 
   const [SyncCode, setSyncCode] = useState("");
@@ -135,14 +134,17 @@ const Join = ({ navigation }: JoinNavigationProps) => {
       return pushToast(err_msg);
 
     // store datas client-side
-    const { succeed: kpSucceed } = setPoolKeyPhrase
-      ? await setPoolKeyPhrase(SyncCodeCopy)
+    const { succeed: kpSucceed } = addPoolKeyPhrase
+      ? await addPoolKeyPhrase(SyncCodeCopy, false)
       : { succeed: false };
     const { succeed: poolSucceed } = addPool
-      ? await addPool({
-          SS_key_hashed_kp: MakeKeyPhraseKey(SyncCodeCopy),
-          ...data,
-        })
+      ? await addPool(
+          {
+            SS_key_hashed_kp: MakeKeyPhraseKey(SyncCodeCopy),
+            ...data,
+          },
+          false
+        )
       : { succeed: false };
 
     if (!kpSucceed || !poolSucceed)

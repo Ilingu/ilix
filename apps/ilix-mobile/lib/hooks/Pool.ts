@@ -1,9 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import {
-  DevicesPool,
-  FunctionResult,
-  StoredDevicesPool,
-} from "../types/interfaces";
+import type { FunctionResult, StoredDevicesPool } from "../types/interfaces";
 import { PoolCtxShape, StoredPools } from "../Context/Pool";
 import { AS_Get, AS_Store, POOL_KEY } from "../db/AsyncStorage";
 import AuthContext from "../Context/Auth";
@@ -11,16 +7,19 @@ import ApiClient from "../ApiClient";
 import { IsCodeOk } from "../utils";
 
 export const GetStoredPools = async (): Promise<PoolCtxShape> => {
+  const defaultState: PoolCtxShape = { loading: false, cascading_update: true };
   const { succeed, data } = await AS_Get<StoredPools>(POOL_KEY);
-  return !succeed || !data
-    ? { loading: false }
-    : { pools: data, loading: false };
+  return !succeed || !data ? defaultState : { pools: data, ...defaultState };
 };
 
 const PoolHook = (): PoolCtxShape => {
-  const { pool_key_phrase } = useContext(AuthContext);
+  const { pool_key_phrase, cascading_update: AuthCCUpdate } =
+    useContext(AuthContext);
 
-  const [poolsCtx, setPoolsCtx] = useState<PoolCtxShape>({ loading: true });
+  const [poolsCtx, setPoolsCtx] = useState<PoolCtxShape>({
+    loading: true,
+    cascading_update: true,
+  });
 
   const setInitialState = async () => {
     const defaultState = await GetStoredPools();
@@ -31,11 +30,21 @@ const PoolHook = (): PoolCtxShape => {
     setPoolsCtx(defaultState);
   };
 
-  const addPool = async (pool: StoredDevicesPool): Promise<FunctionResult> => {
+  const addPool = async (
+    pool: StoredDevicesPool,
+    with_CC_update = false
+  ): Promise<FunctionResult> => {
     const curState = { ...poolsCtx };
     const newState: PoolCtxShape = {
-      pools: { current: 0, pools: [pool, ...(curState.pools?.pools ?? [])] },
       ...curState,
+      pools: {
+        current_index: 0,
+        pools: [pool, ...(curState.pools?.pools ?? [])],
+        get current() {
+          return this.pools[this.current_index];
+        },
+      },
+      cascading_update: with_CC_update,
     };
 
     setPoolsCtx(newState);
@@ -45,8 +54,15 @@ const PoolHook = (): PoolCtxShape => {
   const setPool = async (new_index: number): Promise<FunctionResult> => {
     const curState = { ...poolsCtx };
     const newState: PoolCtxShape = {
-      pools: { current: new_index, pools: curState.pools?.pools ?? [] },
       ...curState,
+      pools: {
+        current_index: new_index,
+        pools: curState.pools?.pools ?? [],
+        get current() {
+          return this.pools[this.current_index];
+        },
+      },
+      cascading_update: true,
     };
     setPoolsCtx(newState);
     return await AS_Store(POOL_KEY, newState);
@@ -58,12 +74,20 @@ const PoolHook = (): PoolCtxShape => {
   ): Promise<FunctionResult> => {
     const curState = { ...poolsCtx };
     curState.pools?.pools?.splice(index, 1, pool);
+
+    const same_index = curState.pools?.current_index;
+    if (same_index === undefined) return { succeed: false };
+
     const newState: PoolCtxShape = {
-      pools: {
-        current: curState.pools?.current ?? 0,
-        pools: curState.pools?.pools ?? [],
-      },
       ...curState,
+      pools: {
+        current_index: same_index,
+        pools: curState.pools?.pools ?? [],
+        get current() {
+          return this.pools[this.current_index];
+        },
+      },
+      cascading_update: true,
     };
 
     setPoolsCtx(newState);
@@ -92,9 +116,9 @@ const PoolHook = (): PoolCtxShape => {
     )
       return;
 
-    const index = poolsCtx.pools?.current;
+    const index = poolsCtx.pools?.current_index;
     if (index === undefined) return;
-    const ss_key = poolsCtx.pools?.pools[index].SS_key_hashed_kp;
+    const ss_key = poolsCtx.pools?.current.SS_key_hashed_kp;
     if (ss_key === undefined) return;
 
     updatePool(index, {
@@ -108,6 +132,7 @@ const PoolHook = (): PoolCtxShape => {
   }, []);
 
   useEffect(() => {
+    if (!AuthCCUpdate) return;
     refresh_pool();
   }, [pool_key_phrase]);
 

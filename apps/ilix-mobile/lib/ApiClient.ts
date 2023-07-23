@@ -17,19 +17,19 @@ type GetPath<T extends GetRoutes> = T extends "/pool/{pool_kp}"
 type GetReturns<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   ? DevicesPool
   : T extends "/file-transfer/{pool_kp}/{device_id}/all"
-  ? FilePoolTransfer
+  ? FilePoolTransfer[]
   : never;
 
 // Post
 type PostRoutes =
   | "/pool/new"
-  | "/file-transfer/{pool_kp}/add?from={from}&to={to}";
+  | "/file-transfer/{pool_kp}/new?from={from}&to={to}";
 type PostPath<T extends PostRoutes> =
-  T extends "/file-transfer/{pool_kp}/add?from={from}&to={to}"
+  T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
     ? { pool_kp: string }
     : undefined;
 type PostQuery<T extends PostRoutes> =
-  T extends "/file-transfer/{pool_kp}/add?from={from}&to={to}"
+  T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
     ? { from: string; to: string }
     : undefined;
 type PostBody<T extends PostRoutes> = T extends "/pool/new"
@@ -41,8 +41,8 @@ type PostBody<T extends PostRoutes> = T extends "/pool/new"
   : undefined;
 type PostReturns<T extends PostRoutes> = T extends "/pool/new"
   ? string
-  : T extends "/file-transfer/{pool_kp}/add?from={from}&to={to}"
-  ? null
+  : T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
+  ? string
   : never;
 
 // Put
@@ -153,9 +153,14 @@ export default class ApiClient {
   }
 }
 
+export const AddFilesToTransfer = async (): Promise<FunctionResult> => {
+  return { succeed: false, reason: "not implemented" };
+};
+
 export const HandleGetFileAndSave = async (
   file_id: string,
-  filename: string
+  filename: string,
+  key_phrase: string
 ): Promise<FunctionResult> => {
   const permissions =
     await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
@@ -165,7 +170,9 @@ export const HandleGetFileAndSave = async (
   try {
     /* Download File from api */
     const call_url = `${SERVER_BASE_URL}/files/${file_id}`;
-    const resp = await fetch(call_url);
+    const resp = await fetch(call_url, {
+      body: JSON.stringify({ key_phrase }),
+    });
     if (!resp.ok)
       return { succeed: false, reason: "server failed to fetch file" };
 
