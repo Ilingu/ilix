@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { FunctionResult } from "../types/interfaces";
 
-export const POOL_KEY = "device_pool";
+export const POOL_KEY = "device_pools";
 
 export const AS_Store = async (
   key: string,

@@ -10,9 +10,7 @@ import AuthContext from "./lib/Context/Auth";
 import PoolContext from "./lib/Context/Pool";
 import TransfersContext from "./lib/Context/Transfer";
 // Hooks
-import AuthHook from "./lib/hooks/Auth";
-import PoolHook from "./lib/hooks/Pool";
-import TransferHook from "./lib/hooks/Transfer";
+import AppStateHook from "./lib/hooks/AppState";
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -29,15 +27,19 @@ if (
 }
 
 export default function App() {
-  const AuthState = AuthHook();
-  const PoolState = PoolHook();
-  const TransferState = TransferHook();
+  const { authState, poolState, transferState } = AppStateHook();
+
+  console.log({
+    AuthState: JSON.stringify(authState, null, 2),
+    PoolState: JSON.stringify(poolState, null, 2),
+    TransferState: JSON.stringify(transferState, null, 2),
+  });
 
   return (
     <NavigationContainer>
-      <AuthContext.Provider value={AuthState}>
-        <PoolContext.Provider value={PoolState}>
-          <TransfersContext.Provider value={TransferState}>
+      <AuthContext.Provider value={authState}>
+        <PoolContext.Provider value={poolState}>
+          <TransfersContext.Provider value={transferState}>
             <Navigator
               initialRouteName="Splash"
               screenOptions={{
