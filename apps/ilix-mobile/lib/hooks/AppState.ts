@@ -26,6 +26,9 @@ const AppState = (): AppStateShape => {
     cascading_update: true,
     logged_in: false,
     loading: true,
+    get device_name() {
+      return undefined;
+    },
   });
   //#endregion
 
@@ -52,8 +55,20 @@ const AppState = (): AppStateShape => {
       defaultState.addPoolKeyPhrase = addPoolKeyPhrase;
       defaultState.setPoolKeyPhrase = setPoolKeyPhrase;
 
-      setAuthState(defaultState);
+      setAuthState({
+        ...defaultState,
+        get device_name() {
+          return getDeviceName(defaultState.device_id);
+        },
+      });
     };
+
+    const getDeviceName = (device_id?: string) =>
+      (device_id ?? authState.device_id) === undefined
+        ? undefined
+        : poolState.pools?.current.devices_id_to_name[
+            (device_id ?? authState.device_id) as string
+          ];
 
     const addPoolKeyPhrase = async (
       pool_key_phrase: string,
@@ -63,6 +78,9 @@ const AppState = (): AppStateShape => {
         ...prev,
         pool_key_phrase,
         cascading_update: with_CC_update,
+        get device_name() {
+          return getDeviceName();
+        },
       }));
       return await SS_Store(MakeKeyPhraseKey(pool_key_phrase), pool_key_phrase);
     };
@@ -79,6 +97,9 @@ const AppState = (): AppStateShape => {
         ...prev,
         pool_key_phrase: new_key_phrase,
         cascading_update: true,
+        get device_name() {
+          return getDeviceName();
+        },
       }));
       return { succeed: true };
     };

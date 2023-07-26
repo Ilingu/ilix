@@ -11,6 +11,8 @@ import PoolContext from "./lib/Context/Pool";
 import TransfersContext from "./lib/Context/Transfer";
 // Hooks
 import AppStateHook from "./lib/hooks/AppState";
+import ColorScheme from "./lib/Theme";
+import HomeHeader from "./components/design/HomeHeader";
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -29,11 +31,11 @@ if (
 export default function App() {
   const { authState, poolState, transferState } = AppStateHook();
 
-  console.log({
-    AuthState: JSON.stringify(authState, null, 2),
-    PoolState: JSON.stringify(poolState, null, 2),
-    TransferState: JSON.stringify(transferState, null, 2),
-  });
+  // console.log({
+  //   AuthState: JSON.stringify(authState, null, 2),
+  //   PoolState: JSON.stringify(poolState, null, 2),
+  //   TransferState: JSON.stringify(transferState, null, 2),
+  // });
 
   return (
     <NavigationContainer>
@@ -49,7 +51,24 @@ export default function App() {
             >
               <Screen name="Splash" component={Splash} />
               <Screen name="Auth" component={AuthRouter} />
-              <Screen name="Home" component={Home} />
+              <Screen
+                name="Home"
+                component={Home}
+                options={{
+                  title: "🏠 Ilix",
+                  headerTitle: () =>
+                    HomeHeader(poolState.pools?.current.pool_name),
+                  headerShown: true,
+                  headerBackVisible: false,
+                  headerStyle: {
+                    backgroundColor: ColorScheme.PRIMARY,
+                  },
+                  headerTintColor: "#fff",
+                  headerTitleStyle: {
+                    fontWeight: "bold",
+                  },
+                }}
+              />
             </Navigator>
           </TransfersContext.Provider>
         </PoolContext.Provider>

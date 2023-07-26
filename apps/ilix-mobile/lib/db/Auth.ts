@@ -21,6 +21,9 @@ const defaultState: AuthShape = {
   cascading_update: true,
   logged_in: false,
   loading: false,
+  get device_name() {
+    return undefined;
+  },
 };
 
 export const GetStoredAuthState = async (
@@ -57,5 +60,8 @@ export const GetStoredAuthState = async (
     loading: false,
     pool_key_phrase: key_phrase,
     device_id: DeviceId,
+    get device_name() {
+      return undefined;
+    },
   };
 };

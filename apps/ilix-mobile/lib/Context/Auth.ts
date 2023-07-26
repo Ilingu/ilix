@@ -7,6 +7,7 @@ export interface AuthShape {
   cascading_update: boolean;
   pool_key_phrase?: string;
   device_id?: string;
+  get device_name(): string | undefined;
   addPoolKeyPhrase?: (
     pool_key_phrase: string,
     with_CC_update?: boolean
@@ -18,5 +19,8 @@ const AuthContext = createContext<AuthShape>({
   logged_in: false,
   loading: true,
   cascading_update: true,
+  get device_name() {
+    return undefined;
+  },
 });
 export default AuthContext;
