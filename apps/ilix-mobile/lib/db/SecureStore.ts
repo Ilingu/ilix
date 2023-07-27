@@ -1,4 +1,4 @@
-import { FunctionResult } from "../types/interfaces";
+import type { FunctionResult, StoredDevicesPool } from "../types/interfaces";
 import * as SecureStore from "expo-secure-store";
 import { Hash } from "../utils";
 
@@ -29,5 +29,21 @@ export const SS_Get = async <T = never>(
     return { succeed: true, data: result };
   } catch (_) {
     return { succeed: false };
+  }
+};
+
+export const SS_clear = async (
+  pools: StoredDevicesPool[]
+): Promise<FunctionResult<never>> => {
+  try {
+    await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
+    await Promise.all(
+      pools.map(({ SS_key_hashed_kp }) =>
+        SecureStore.deleteItemAsync(SS_key_hashed_kp)
+      )
+    );
+    return { succeed: true };
+  } catch (error) {
+    return { succeed: false, reason: `${error}` };
   }
 };

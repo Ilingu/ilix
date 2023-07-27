@@ -13,7 +13,6 @@ type SlideInViewProps = PropsWithChildren<{
   state: "forward" | "backward";
   from: AbsolutePos;
   to: AbsolutePos;
-  isPercentage: boolean;
 }>;
 const SlideInView: React.FC<SlideInViewProps> = ({
   style,
@@ -22,7 +21,6 @@ const SlideInView: React.FC<SlideInViewProps> = ({
   from,
   to,
   state,
-  isPercentage,
 }) => {
   const top = useRef(new Animated.Value(from.top ?? 0)).current;
   const bottom = useRef(new Animated.Value(from.bottom ?? 0)).current;
@@ -37,13 +35,13 @@ const SlideInView: React.FC<SlideInViewProps> = ({
       Animated.timing(top, {
         toValue: to.top,
         duration,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     else
       Animated.timing(top, {
         toValue: from.top,
         duration,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
   }, [state, top]);
 
@@ -54,13 +52,13 @@ const SlideInView: React.FC<SlideInViewProps> = ({
       Animated.timing(bottom, {
         toValue: to.bottom,
         duration,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     else
       Animated.timing(bottom, {
         toValue: from.bottom,
         duration,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
   }, [state, bottom]);
 
@@ -71,13 +69,13 @@ const SlideInView: React.FC<SlideInViewProps> = ({
       Animated.timing(right, {
         toValue: to.right,
         duration,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     else
       Animated.timing(right, {
         toValue: from.right,
         duration,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
   }, [state, right]);
 
@@ -102,6 +100,7 @@ const SlideInView: React.FC<SlideInViewProps> = ({
     <Animated.View // Special animatable View
       style={{
         ...style,
+        position: "absolute",
         top: from.top === undefined || to.top === undefined ? undefined : top,
         bottom:
           from.bottom === undefined || to.bottom === undefined

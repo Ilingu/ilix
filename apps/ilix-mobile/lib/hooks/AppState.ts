@@ -6,13 +6,20 @@ import type {
   FunctionResult,
   StoredDevicesPool,
 } from "../types/interfaces";
-import { MakeKeyPhraseKey, SS_Get, SS_Store } from "../db/SecureStore";
+import {
+  MakeKeyPhraseKey,
+  SS_Get,
+  SS_Store,
+  SS_clear,
+} from "../db/SecureStore";
 import { useEffect, useRef, useState } from "react";
 import { GetStoredAuthState } from "../db/Auth";
-import { AS_Store, POOL_KEY } from "../db/AsyncStorage";
+import { AS_Clear, AS_Store, POOL_KEY } from "../db/AsyncStorage";
 import ApiClient from "../ApiClient";
-import { IsCodeOk } from "../utils";
+import { IsCodeOk, pushToast } from "../utils";
 import { GetStoredPools } from "../db/Pools";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../App";
 
 interface AppStateShape {
   authState: AuthShape;
@@ -54,6 +61,7 @@ const AppState = (): AppStateShape => {
 
       defaultState.addPoolKeyPhrase = addPoolKeyPhrase;
       defaultState.setPoolKeyPhrase = setPoolKeyPhrase;
+      defaultState.logOut = logOut;
 
       setAuthState({
         ...defaultState,
@@ -69,6 +77,33 @@ const AppState = (): AppStateShape => {
         : poolState.pools?.current.devices_id_to_name[
             (device_id ?? authState.device_id) as string
           ];
+
+    const logOut = async <T extends keyof RootStackParamList>({
+      navigation,
+    }: NativeStackScreenProps<RootStackParamList, T>) => {
+      if (poolState.pools?.pools === undefined)
+        return pushToast("Failed to log out");
+
+      const { succeed: ss_ok } = await SS_clear(poolState.pools?.pools);
+      const { succeed: as_ok } = await AS_Clear();
+
+      if (!ss_ok || !as_ok) return pushToast("Failed to log out");
+
+      setTransferState([false, null, []]);
+      setPoolState({ cascading_update: true, loading: false });
+      setAuthState((prev) => ({
+        cascading_update: true,
+        loading: false,
+        logged_in: false,
+        device_id: prev.device_id,
+        get device_name() {
+          return undefined;
+        },
+      }));
+
+      pushToast("Successfully logged out");
+      navigation.navigate("Auth");
+    };
 
     const addPoolKeyPhrase = async (
       pool_key_phrase: string,

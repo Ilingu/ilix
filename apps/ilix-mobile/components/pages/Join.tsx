@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 // datas
 import PoolContext from "../../lib/Context/Pool";
@@ -9,7 +9,6 @@ import {
   IsEmptyString,
   ToastDuration,
   pushToast,
-  range,
 } from "../../lib/utils";
 
 // ui
@@ -26,6 +25,7 @@ import {
   View,
   Dimensions,
   Animated,
+  PanResponder,
 } from "react-native";
 import ParticleView from "../animations/Particles";
 import Button from "../design/Button";
@@ -41,6 +41,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import QrCodeScanner from "../qrCode";
 import { MakeKeyPhraseKey } from "../../lib/db/SecureStore";
+import SlideInView from "../animations/SlideIn";
 
 const [ScreenWidth, ScreenHeight] = [
   Dimensions.get("window").width,
@@ -50,7 +51,6 @@ const [ScreenWidth, ScreenHeight] = [
 const JoinHomeCenterYPos = ScreenHeight / 2 - (289.9 - 28) / 2;
 const QrCodeCenterYPos = ScreenHeight / 2 - 335 / 4 + 2;
 
-const GAP = 610;
 type JoinNavigationProps = NativeStackScreenProps<AuthNestedStack, "Join">;
 const Join = ({ navigation }: JoinNavigationProps) => {
   const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
@@ -60,38 +60,17 @@ const Join = ({ navigation }: JoinNavigationProps) => {
   const [DeviceName, setDeviceName] = useState("");
 
   // animation
-  const [JoinHomeYPos, setPositions] = useState(JoinHomeCenterYPos); // Initial value for opacity: 0
-  const QrCodeYPos = JoinHomeYPos + GAP;
-
-  const updatePositions = (keyframes: number[], endVal: number) => {
-    const nextFrame = keyframes.shift();
-    if (nextFrame === undefined) {
-      return setPositions(endVal);
-    }
-    setPositions(nextFrame);
-    requestAnimationFrame(() => updatePositions(keyframes.slice(50), endVal));
-  };
-
   const [posState, setPosState] = useState<"JoinHome" | "QrCode">("JoinHome");
-  const ChangeInHandle = (next: "JoinHome" | "QrCode") => {
-    if (next === posState) return;
 
-    if (next === "QrCode") {
-      const JHKeyframe = range(
-        Math.round(JoinHomeYPos),
-        Math.round(QrCodeCenterYPos) - GAP
-      );
-      updatePositions(JHKeyframe, QrCodeCenterYPos - GAP);
-    } else {
-      const JHKeyframe = range(
-        Math.round(QrCodeCenterYPos) - GAP,
-        Math.round(JoinHomeCenterYPos)
-      );
-      updatePositions(JHKeyframe, JoinHomeCenterYPos);
-    }
-
-    setPosState(next);
-  };
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, { dy }) => {
+        if (dy <= -75) setPosState("QrCode");
+        else if (dy >= 75) setPosState("JoinHome");
+      },
+    })
+  ).current;
 
   const SubmitJoinReq = async () => {
     if (typeof device_id !== "string") return pushToast("No device_id found");
@@ -125,7 +104,8 @@ const Join = ({ navigation }: JoinNavigationProps) => {
     const err_msg = `Failed to join pool: ${
       reason ?? "error reason not specified"
     }`;
-    if (!succeed || !data) return pushToast(err_msg);
+    if ((!succeed && reason !== "AlreadyInPool") || !data)
+      return pushToast(err_msg);
     if (
       !("pool_name" in data) ||
       !("devices_id" in data) ||
@@ -161,13 +141,15 @@ const Join = ({ navigation }: JoinNavigationProps) => {
     <SafeAreaProvider>
       <ParticleView
         paticles_number={5}
+        panResponder={panResponder}
         style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
       >
-        <View
-          style={{
-            ...tw`absolute w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`,
-            top: JoinHomeYPos,
-          }}
+        <SlideInView
+          duration={500}
+          from={{ top: JoinHomeCenterYPos }}
+          to={{ top: -275 }}
+          state={posState === "JoinHome" ? "backward" : "forward"}
+          style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
         >
           <Image
             source={require("../../assets/icon.png")}
@@ -192,7 +174,7 @@ const Join = ({ navigation }: JoinNavigationProps) => {
             />
 
             <Button
-              onPress={() => ChangeInHandle("QrCode")}
+              onPress={() => setPosState("QrCode")}
               style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
             >
               <FontAwesome5 name="qrcode" size={16} color="white" /> Scan or
@@ -220,16 +202,22 @@ const Join = ({ navigation }: JoinNavigationProps) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </SlideInView>
 
-        <QrCodeHandler
-          initialCode={SyncCode}
-          y_pos={QrCodeYPos}
-          reportToParent={(code) => {
-            setSyncCode(code);
-            ChangeInHandle("JoinHome");
-          }}
-        />
+        <SlideInView
+          duration={500}
+          from={{ top: 1000 }}
+          to={{ top: QrCodeCenterYPos }}
+          state={posState === "JoinHome" ? "backward" : "forward"}
+          style={tw`w-3/4 p-4 border-2 border-black bg-white rounded-xl z-10`}
+        >
+          <QrCodeHandler
+            reportToParent={(code, back = false) => {
+              setSyncCode(code);
+              back && setPosState("JoinHome");
+            }}
+          />
+        </SlideInView>
 
         <StatusBar style="light" backgroundColor="black" />
       </ParticleView>
@@ -238,17 +226,17 @@ const Join = ({ navigation }: JoinNavigationProps) => {
 };
 
 type QrProps = {
-  initialCode?: string;
-  y_pos: number;
-  reportToParent: (code: string) => void;
+  reportToParent: (code: string, back?: boolean) => void;
 };
-const QrCodeHandler: React.FC<QrProps> = ({
-  reportToParent,
-  initialCode,
-  y_pos,
-}) => {
-  const [SyncCode, setSyncCode] = useState(initialCode ?? "");
+const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
+  const [SyncCode, setSyncCode] = useState("");
   const [scanning, setScanning] = useState(false);
+
+  const writeTimeout = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    writeTimeout.current && clearTimeout(writeTimeout.current);
+    writeTimeout.current = setTimeout(() => reportToParent(SyncCode), 5000);
+  }, [SyncCode]);
 
   return scanning ? (
     <QrCodeScanner
@@ -259,12 +247,7 @@ const QrCodeHandler: React.FC<QrProps> = ({
       }}
     />
   ) : (
-    <View
-      style={{
-        ...tw`absolute w-3/4 p-4 border-2 border-black bg-white rounded-xl z-10`,
-        top: y_pos,
-      }}
-    >
+    <>
       <Button
         onPress={() => setScanning(true)}
         style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] mb-5 text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
@@ -285,7 +268,7 @@ const QrCodeHandler: React.FC<QrProps> = ({
       {IsCodeOk(SyncCode) ? (
         <FadeInView duration={500}>
           <Button
-            onPress={() => reportToParent(SyncCode)}
+            onPress={() => reportToParent(SyncCode, true)}
             style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
           >
             <FontAwesome5 name="save" size={16} color="white" /> Save
@@ -293,16 +276,13 @@ const QrCodeHandler: React.FC<QrProps> = ({
         </FadeInView>
       ) : (
         <Button
-          onPress={() => {
-            reportToParent("");
-            pushToast("Saved ✅");
-          }}
+          onPress={() => reportToParent(SyncCode, true)}
           style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
         >
           <FontAwesome5 name="backward" size={16} color="white" /> Back
         </Button>
       )}
-    </View>
+    </>
   );
 };
 

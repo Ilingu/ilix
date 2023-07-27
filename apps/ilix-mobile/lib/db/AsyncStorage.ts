@@ -30,3 +30,12 @@ export const AS_Get = async <T = never>(
     return { succeed: false, reason: e as string };
   }
 };
+
+export const AS_Clear = async (): Promise<FunctionResult<never>> => {
+  try {
+    await AsyncStorage.clear();
+    return { succeed: true };
+  } catch (e) {
+    return { succeed: false, reason: e as string };
+  }
+};

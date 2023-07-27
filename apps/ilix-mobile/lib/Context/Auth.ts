@@ -1,5 +1,7 @@
 import { createContext } from "react";
 import type { FunctionResult } from "../types/interfaces";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../App";
 
 export interface AuthShape {
   logged_in: boolean;
@@ -13,6 +15,9 @@ export interface AuthShape {
     with_CC_update?: boolean
   ) => Promise<FunctionResult>;
   setPoolKeyPhrase?: (hashed_kp: string) => Promise<FunctionResult>;
+  logOut?: <T extends keyof RootStackParamList>({
+    navigation,
+  }: NativeStackScreenProps<RootStackParamList, T>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthShape>({

@@ -61,7 +61,7 @@ export default function App() {
                   headerShown: true,
                   headerBackVisible: false,
                   headerStyle: {
-                    backgroundColor: ColorScheme.PRIMARY,
+                    backgroundColor: "black",
                   },
                   headerTintColor: "#fff",
                   headerTitleStyle: {

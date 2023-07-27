@@ -1,4 +1,4 @@
-import type { EventArg, ParamListBase } from "@react-navigation/native";
+import type { ParamListBase } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useRef } from "react";
 import { pushToast } from "../utils";

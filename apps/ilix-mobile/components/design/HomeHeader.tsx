@@ -13,9 +13,9 @@ export default function HomeHeader(pool_name?: string) {
         </TouchableOpacity>
       </View>
       <Text style={tw`font-semibold text-white text-center text-[20px] mr-6`}>
-        <Text style={tw`text-black italic`}>{"[ "}</Text>
+        <Text style={tw`text-white italic`}>{"[ "}</Text>
         {pool_name}
-        <Text style={tw`text-black italic`}>{" ]"}</Text>
+        <Text style={tw`text-white italic`}>{" ]"}</Text>
       </Text>
     </View>
   );
