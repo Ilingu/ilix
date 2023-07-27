@@ -13,8 +13,8 @@ export const SS_Store = async (
   try {
     await SecureStore.setItemAsync(key, JSON.stringify(value));
     return { succeed: true };
-  } catch (_) {
-    return { succeed: false };
+  } catch (e) {
+    return { succeed: false, reason: `${e}` };
   }
 };
 
@@ -27,8 +27,8 @@ export const SS_Get = async <T = never>(
 
     let result: T = JSON.parse(raw_result);
     return { succeed: true, data: result };
-  } catch (_) {
-    return { succeed: false };
+  } catch (e) {
+    return { succeed: false, reason: `${e}` };
   }
 };
 
@@ -43,7 +43,7 @@ export const SS_clear = async (
       )
     );
     return { succeed: true };
-  } catch (error) {
-    return { succeed: false, reason: `${error}` };
+  } catch (e) {
+    return { succeed: false, reason: `${e}` };
   }
 };

@@ -71,6 +71,8 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
     if (!kpSucceed || !poolSucceed)
       return pushToast("Failed to store data client-side, try again");
 
+    // reset
+    setDeviceName("");
     // change to home page
     navigation.getParent()?.navigate("Home");
   };

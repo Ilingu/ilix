@@ -37,6 +37,8 @@ const AppState = (): AppStateShape => {
       return undefined;
     },
   });
+  const authStateRef = useRef(authState);
+  authStateRef.current = authState;
   //#endregion
 
   //#region : Pool State
@@ -44,6 +46,8 @@ const AppState = (): AppStateShape => {
     loading: true,
     cascading_update: true,
   });
+  const poolStateRef = useRef(poolState);
+  poolStateRef.current = poolState;
   //#endregion
 
   //#region : Transfer State
@@ -52,6 +56,8 @@ const AppState = (): AppStateShape => {
     null,
     [],
   ]);
+  const transferStateRef = useRef(transferState);
+  transferStateRef.current = transferState;
   //#endregion
 
   //#region : Auth Hook
@@ -71,38 +77,48 @@ const AppState = (): AppStateShape => {
       });
     };
 
-    const getDeviceName = (device_id?: string) =>
-      (device_id ?? authState.device_id) === undefined
+    const getDeviceName = (device_id?: string) => {
+      const authState = authStateRef.current;
+      const poolState = poolStateRef.current;
+      return (device_id ?? authState.device_id) === undefined
         ? undefined
         : poolState.pools?.current.devices_id_to_name[
             (device_id ?? authState.device_id) as string
           ];
+    };
 
     const logOut = async <T extends keyof RootStackParamList>({
       navigation,
     }: NativeStackScreenProps<RootStackParamList, T>) => {
+      const poolState = poolStateRef.current;
       if (poolState.pools?.pools === undefined)
-        return pushToast("Failed to log out");
+        return pushToast("Failed to log out, no pool");
 
       const { succeed: ss_ok } = await SS_clear(poolState.pools?.pools);
       const { succeed: as_ok } = await AS_Clear();
 
       if (!ss_ok || !as_ok) return pushToast("Failed to log out");
+      navigation.navigate("Auth");
 
-      setTransferState([false, null, []]);
-      setPoolState({ cascading_update: true, loading: false });
       setAuthState((prev) => ({
+        ...prev,
         cascading_update: true,
         loading: false,
         logged_in: false,
-        device_id: prev.device_id,
+        pool_key_phrase: undefined,
         get device_name() {
           return undefined;
         },
       }));
+      setPoolState((prev) => ({
+        ...prev,
+        cascading_update: true,
+        loading: false,
+        pools: undefined,
+      }));
+      setTransferState([false, null, []]);
 
       pushToast("Successfully logged out");
-      navigation.navigate("Auth");
     };
 
     const addPoolKeyPhrase = async (
@@ -152,7 +168,11 @@ const AppState = (): AppStateShape => {
 
       if (isFirstLoad) lastPoolLoadingState.current = true;
       (isFirstLoad ? setAuthInitialState : setPoolKeyPhrase)(poolKp);
-    }, [poolState.loading, poolState.pools?.current_index]);
+    }, [
+      poolState.loading,
+      poolState.pools?.current_index,
+      poolState.cascading_update,
+    ]);
   }
   //#endregion
 
@@ -171,7 +191,7 @@ const AppState = (): AppStateShape => {
       pool: StoredDevicesPool,
       with_CC_update = false
     ): Promise<FunctionResult> => {
-      const curState = { ...poolState };
+      const curState = { ...poolStateRef.current };
       const newState: PoolCtxShape = {
         ...curState,
         pools: {
@@ -189,7 +209,7 @@ const AppState = (): AppStateShape => {
     };
 
     const setPool = async (new_index: number): Promise<FunctionResult> => {
-      const curState = { ...poolState };
+      const curState = { ...poolStateRef.current };
       const newState: PoolCtxShape = {
         ...curState,
         pools: {
@@ -209,7 +229,7 @@ const AppState = (): AppStateShape => {
       index: number,
       pool: StoredDevicesPool
     ): Promise<FunctionResult> => {
-      const curState = { ...poolState };
+      const curState = { ...poolStateRef.current };
       curState.pools?.pools?.splice(index, 1, pool);
 
       const same_index = curState.pools?.current_index;
@@ -262,8 +282,8 @@ const AppState = (): AppStateShape => {
       if (ss_key === undefined) return;
 
       updatePool(index, {
-        SS_key_hashed_kp: ss_key,
         ...data,
+        SS_key_hashed_kp: ss_key,
       });
     };
 
@@ -274,7 +294,7 @@ const AppState = (): AppStateShape => {
     useEffect(() => {
       if (!authState.cascading_update) return;
       refresh_pool();
-    }, [authState.pool_key_phrase]);
+    }, [authState.pool_key_phrase, authState.cascading_update]);
   }
   //#endregion
 
@@ -317,7 +337,7 @@ const AppState = (): AppStateShape => {
         if (realSuccess) setTransferState([false, true, data]);
         else setTransferState([false, false, []]);
       })();
-    }, [authState.pool_key_phrase]);
+    }, [authState.pool_key_phrase, authState.loading]);
   }
   //#endregion
 

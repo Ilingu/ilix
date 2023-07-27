@@ -130,6 +130,9 @@ const Join = ({ navigation }: JoinNavigationProps) => {
     if (!kpSucceed || !poolSucceed)
       return pushToast("Failed to store data client-side, try again");
 
+    // reset
+    setDeviceName("");
+    setSyncCode("");
     // change to home page
     navigation.getParent()?.navigate("Home");
   };
@@ -147,7 +150,7 @@ const Join = ({ navigation }: JoinNavigationProps) => {
         <SlideInView
           duration={500}
           from={{ top: JoinHomeCenterYPos }}
-          to={{ top: -275 }}
+          to={{ top: -400 }}
           state={posState === "JoinHome" ? "backward" : "forward"}
           style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
         >
@@ -206,7 +209,7 @@ const Join = ({ navigation }: JoinNavigationProps) => {
 
         <SlideInView
           duration={500}
-          from={{ top: 1000 }}
+          from={{ top: 950 }}
           to={{ top: QrCodeCenterYPos }}
           state={posState === "JoinHome" ? "backward" : "forward"}
           style={tw`w-3/4 p-4 border-2 border-black bg-white rounded-xl z-10`}

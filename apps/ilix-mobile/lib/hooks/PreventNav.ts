@@ -11,7 +11,9 @@ export default function PreventNavHook<
   const quitNum = useRef(0);
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (e.data.action.type !== "GO_BACK") return;
       e.preventDefault();
+
       if (optionToQuit) quitNum.current += 1;
       if (quitNum.current >= 2) {
         quitNum.current = 0;
@@ -19,7 +21,7 @@ export default function PreventNavHook<
         return BackHandler.exitApp();
       }
 
-      pushToast(optionToQuit ? "Do again to quit" : "Where are you going? 👀");
+      pushToast(optionToQuit ? "Again to exit" : "Where are you going? 👀");
     });
     return unsubscribe;
   }, [navigation]);
