@@ -41,7 +41,7 @@ export default function Home({ navigation }: HomeNavigationProps) {
         />
       ),
     });
-  }, [navigation]);
+  }, [navigation, pools]);
 
   return (
     <Navigator
