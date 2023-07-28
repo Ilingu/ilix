@@ -1,19 +1,19 @@
 import { useContext, useEffect, useRef, useState } from "react";
 
 // datas
-import PoolContext from "../../lib/Context/Pool";
-import AuthContext from "../../lib/Context/Auth";
-import ApiClient from "../../lib/ApiClient";
+import PoolContext from "../../../lib/Context/Pool";
+import AuthContext from "../../../lib/Context/Auth";
+import ApiClient from "../../../lib/ApiClient";
 import {
   IsCodeOk,
   IsEmptyString,
   ToastDuration,
   pushToast,
-} from "../../lib/utils";
+} from "../../../lib/utils";
 
 // ui
 import tw from "twrnc";
-import ColorScheme from "../../lib/Theme";
+import ColorScheme from "../../../lib/Theme";
 
 // React native
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -24,24 +24,23 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
-  Animated,
   PanResponder,
 } from "react-native";
-import ParticleView from "../animations/Particles";
-import Button from "../design/Button";
-import FadeInView from "../animations/FadeIn";
+import ParticleView from "../../animations/Particles";
+import Button from "../../design/Button";
+import FadeInView from "../../animations/FadeIn";
 import { StatusBar } from "expo-status-bar";
 
 // types
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { AuthNestedStack } from "../../screens/Auth";
+import type { AuthNestedStack } from "../../../screens/Auth";
 
 // Icons
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import QrCodeScanner from "../qrCode";
-import { MakeKeyPhraseKey } from "../../lib/db/SecureStore";
-import SlideInView from "../animations/SlideIn";
+import QrCodeScanner from "../../qrCode";
+import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
+import SlideInView from "../../animations/SlideIn";
 
 const [ScreenWidth, ScreenHeight] = [
   Dimensions.get("window").width,
@@ -52,7 +51,7 @@ const JoinHomeCenterYPos = ScreenHeight / 2 - (289.9 - 28) / 2;
 const QrCodeCenterYPos = ScreenHeight / 2 - 335 / 4 + 2;
 
 type JoinNavigationProps = NativeStackScreenProps<AuthNestedStack, "Join">;
-const Join = ({ navigation }: JoinNavigationProps) => {
+const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
   const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
   const { addPool } = useContext(PoolContext);
 
@@ -155,7 +154,7 @@ const Join = ({ navigation }: JoinNavigationProps) => {
           style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
         >
           <Image
-            source={require("../../assets/icon.png")}
+            source={require("../../../assets/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
           />
           <Text
@@ -178,7 +177,7 @@ const Join = ({ navigation }: JoinNavigationProps) => {
 
             <Button
               onPress={() => setPosState("QrCode")}
-              style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
+              style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
             >
               <FontAwesome5 name="qrcode" size={16} color="white" /> Scan or
               enter sync code
@@ -188,7 +187,7 @@ const Join = ({ navigation }: JoinNavigationProps) => {
               <FadeInView duration={500}>
                 <Button
                   onPress={SubmitJoinReq}
-                  style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
+                  style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
                 >
                   <AntDesign name="login" size={16} color="white" /> Sign In
                 </Button>
@@ -253,7 +252,7 @@ const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
     <>
       <Button
         onPress={() => setScanning(true)}
-        style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] mb-5 text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
+        style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}
       >
         <FontAwesome5 name="qrcode" size={16} color="white" /> Scan Qr Code
       </Button>
@@ -272,7 +271,7 @@ const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
         <FadeInView duration={500}>
           <Button
             onPress={() => reportToParent(SyncCode, true)}
-            style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
+            style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
           >
             <FontAwesome5 name="save" size={16} color="white" /> Save
           </Button>
@@ -280,7 +279,7 @@ const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
       ) : (
         <Button
           onPress={() => reportToParent(SyncCode, true)}
-          style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center mt-2 pt-2`}
+          style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
         >
           <FontAwesome5 name="backward" size={16} color="white" /> Back
         </Button>

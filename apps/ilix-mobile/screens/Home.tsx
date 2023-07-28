@@ -1,50 +1,62 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Text, View } from "react-native";
 import type { RootStackParamList } from "../App";
-import PreventNavHook from "../lib/hooks/PreventNav";
-import tw from "twrnc";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useContext } from "react";
-import AuthContext from "../lib/Context/Auth";
-import ColorScheme from "../lib/Theme";
-import { StatusBar } from "expo-status-bar";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import usePreventNav from "../lib/hooks/PreventNav";
+import HomeDefault from "../components/pages/Home/default";
+import Inbox from "../components/pages/Home/Inbox";
+import { useContext, useEffect } from "react";
+import HomeHeader from "../components/pages/Home/HomeHeader";
 import PoolContext from "../lib/Context/Pool";
-import Button from "../components/design/Button";
-import { AntDesign } from "@expo/vector-icons";
-import ParticleView from "../components/animations/Particles";
+import { CommonActions } from "@react-navigation/native";
+import SwitchPool from "../components/pages/Home/SwitchPool";
+import SendTransfer from "../components/pages/Home/Send";
 
-type NavigationProps = NativeStackScreenProps<RootStackParamList, "Home">;
-export default function Home(nav: NavigationProps) {
-  const { device_name, logOut } = useContext(AuthContext);
+export type HomeNestedStack = {
+  default: undefined;
+  inbox: undefined;
+  send: undefined;
+  SwitchPool: undefined;
+};
+const { Screen, Navigator } = createNativeStackNavigator<HomeNestedStack>();
+
+export type HomeNavigationProps = NativeStackScreenProps<
+  RootStackParamList,
+  "Home"
+>;
+export default function Home({ navigation }: HomeNavigationProps) {
   const { pools } = useContext(PoolContext);
-  PreventNavHook(nav, true);
+  usePreventNav(navigation, true);
+
+  const openAddPool = () => navigation.navigate("Auth", { preventNav: false });
+  const switchPool = () =>
+    navigation.dispatch(CommonActions.navigate({ name: "SwitchPool" }));
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <HomeHeader
+          pool_name={pools?.current.pool_name}
+          openAddPool={openAddPool}
+          switchPool={switchPool}
+        />
+      ),
+    });
+  }, [navigation]);
 
   return (
-    <SafeAreaProvider>
-      <ParticleView
-        paticles_number={5}
-        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-      >
-        <View
-          style={tw`w-3/4 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}
-        >
-          <Text
-            selectable
-            style={tw`text-center text-xl text-[${ColorScheme.TEXT}]`}
-          >
-            Welcome{" "}
-            <Text style={tw`font-bold text-amber-400`}>{device_name}</Text>!
-          </Text>
-          <Button
-            style={tw`bg-[${ColorScheme.ERROR}] text-[${ColorScheme.PRIMARY_CONTENT}] text-base rounded-lg h-10 text-center mb-2 pt-2 mx-2`}
-            onPress={() => logOut && logOut(nav)}
-          >
-            <AntDesign name="logout" size={16} color="black" /> Log out
-          </Button>
-        </View>
-      </ParticleView>
-      <StatusBar style="auto" backgroundColor="black" />
-    </SafeAreaProvider>
+    <Navigator
+      initialRouteName="default"
+      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
+    >
+      <Screen name="default" component={HomeDefault} />
+      <Screen name="inbox" component={Inbox} />
+      <Screen name="send" component={SendTransfer} />
+      <Screen
+        name="SwitchPool"
+        component={SwitchPool}
+        options={{ animation: "slide_from_bottom" }}
+      />
+    </Navigator>
   );
 }
 

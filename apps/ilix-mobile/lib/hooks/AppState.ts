@@ -18,7 +18,7 @@ import { AS_Clear, AS_Store, POOL_KEY } from "../db/AsyncStorage";
 import ApiClient from "../ApiClient";
 import { IsCodeOk, pushToast } from "../utils";
 import { GetStoredPools } from "../db/Pools";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
 
 interface AppStateShape {
@@ -27,7 +27,7 @@ interface AppStateShape {
   transferState: TransfersCtx;
 }
 
-const AppState = (): AppStateShape => {
+const useAppState = (): AppStateShape => {
   //#region : Auth State
   const [authState, setAuthState] = useState<AuthShape>({
     cascading_update: true,
@@ -87,9 +87,9 @@ const AppState = (): AppStateShape => {
           ];
     };
 
-    const logOut = async <T extends keyof RootStackParamList>({
-      navigation,
-    }: NativeStackScreenProps<RootStackParamList, T>) => {
+    const logOut = async <T extends keyof RootStackParamList>(
+      navigation: NativeStackNavigationProp<RootStackParamList, T>
+    ) => {
       const poolState = poolStateRef.current;
       if (poolState.pools?.pools === undefined)
         return pushToast("Failed to log out, no pool");
@@ -347,4 +347,4 @@ const AppState = (): AppStateShape => {
     transferState,
   };
 };
-export default AppState;
+export default useAppState;

@@ -10,12 +10,13 @@ import AuthContext from "./lib/Context/Auth";
 import PoolContext from "./lib/Context/Pool";
 import TransfersContext from "./lib/Context/Transfer";
 // Hooks
-import AppStateHook from "./lib/hooks/AppState";
-import ColorScheme from "./lib/Theme";
-import HomeHeader from "./components/design/HomeHeader";
+import useAppState from "./lib/hooks/AppState";
+import HomeHeader from "./components/pages/Home/HomeHeader";
 
 export type RootStackParamList = {
-  Auth: undefined;
+  Auth?: {
+    preventNav?: boolean;
+  };
   Splash: undefined;
   Home: undefined;
 };
@@ -29,7 +30,7 @@ if (
 }
 
 export default function App() {
-  const { authState, poolState, transferState } = AppStateHook();
+  const { authState, poolState, transferState } = useAppState();
 
   // console.log({
   //   AuthState: JSON.stringify(authState, null, 2),
@@ -54,20 +55,19 @@ export default function App() {
               <Screen
                 name="Home"
                 component={Home}
-                options={{
-                  title: "🏠 Ilix",
-                  headerTitle: () =>
-                    HomeHeader(poolState.pools?.current.pool_name),
+                options={({ navigation }) => ({
+                  headerTitle: () => (
+                    <HomeHeader
+                      pool_name={poolState.pools?.current.pool_name}
+                    />
+                  ),
+
                   headerShown: true,
                   headerBackVisible: false,
                   headerStyle: {
                     backgroundColor: "black",
                   },
-                  headerTintColor: "#fff",
-                  headerTitleStyle: {
-                    fontWeight: "bold",
-                  },
-                }}
+                })}
               />
             </Navigator>
           </TransfersContext.Provider>

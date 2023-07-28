@@ -1,13 +1,13 @@
 import type { ParamListBase } from "@react-navigation/native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useRef } from "react";
 import { pushToast } from "../utils";
 import { BackHandler } from "react-native";
 
-export default function PreventNavHook<
+export default function usePreventNav<
   T extends ParamListBase,
   U extends keyof T
->({ navigation }: NativeStackScreenProps<T, U>, optionToQuit = false) {
+>(navigation: NativeStackNavigationProp<T, U>, optionToQuit = false) {
   const quitNum = useRef(0);
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {

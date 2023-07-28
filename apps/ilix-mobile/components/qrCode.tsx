@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, View, StyleSheet, Dimensions, ViewStyle } from "react-native";
+import { Text, View, StyleSheet, ViewStyle } from "react-native";
 import { BarCodeScanner } from "expo-barcode-scanner";
 import type { BarCodeScannedCallback } from "expo-barcode-scanner";
 

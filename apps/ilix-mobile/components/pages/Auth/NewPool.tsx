@@ -3,29 +3,31 @@ import { useContext, useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Image, Text, TextInput, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import type { AuthNestedStack } from "../../screens/Auth";
+import type { AuthNestedStack } from "../../../screens/Auth";
 
 // ui
-import ParticleView from "../animations/Particles";
-import Button from "../design/Button";
+import ParticleView from "../../animations/Particles";
+import Button from "../../design/Button";
 import tw from "twrnc";
-import ColorScheme from "../../lib/Theme";
+import ColorScheme from "../../../lib/Theme";
 
 // icon
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 
 // data
-import { IsEmptyString, pushToast } from "../../lib/utils";
-import ApiClient from "../../lib/ApiClient";
-import AuthContext from "../../lib/Context/Auth";
-import PoolContext from "../../lib/Context/Pool";
-import { MakeKeyPhraseKey } from "../../lib/db/SecureStore";
+import { IsEmptyString, pushToast } from "../../../lib/utils";
+import ApiClient from "../../../lib/ApiClient";
+import AuthContext from "../../../lib/Context/Auth";
+import PoolContext from "../../../lib/Context/Pool";
+import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
 
 type NewPoolNavigationProps = NativeStackScreenProps<
   AuthNestedStack,
   "NewPool"
 >;
-const NewPool = ({ navigation }: NewPoolNavigationProps) => {
+const NewPool: React.FC<NewPoolNavigationProps> = ({
+  navigation,
+}: NewPoolNavigationProps) => {
   const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
   const { addPool } = useContext(PoolContext);
 
@@ -88,7 +90,7 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
           style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
         >
           <Image
-            source={require("../../assets/icon.png")}
+            source={require("../../../assets/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
           />
           <Text
@@ -121,7 +123,7 @@ const NewPool = ({ navigation }: NewPoolNavigationProps) => {
 
             {IsArgsOk() && (
               <Button
-                style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white text-[16px] rounded-lg h-10 text-center my-2 pt-2`}
+                style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white my-2`}
                 onPress={SubmitNewPool}
               >
                 <FontAwesome5

@@ -3,10 +3,10 @@ import {
   createNativeStackNavigator,
 } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
-import PreventNavHook from "../lib/hooks/PreventNav";
+import usePreventNav from "../lib/hooks/PreventNav";
 
-import Join from "../components/pages/Join";
-import NewPool from "../components/pages/NewPool";
+import Join from "../components/pages/Auth/Join";
+import NewPool from "../components/pages/Auth/NewPool";
 
 export type AuthNestedStack = {
   Auth: undefined;
@@ -16,8 +16,8 @@ export type AuthNestedStack = {
 const { Screen, Navigator } = createNativeStackNavigator<AuthNestedStack>();
 
 type NavigationProps = NativeStackScreenProps<RootStackParamList, "Auth">;
-export default function AuthRouter(nav: NavigationProps) {
-  PreventNavHook(nav, true);
+export default function AuthRouter({ navigation, route }: NavigationProps) {
+  (route.params?.preventNav ?? true) && usePreventNav(navigation, true);
 
   return (
     <Navigator
