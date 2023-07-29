@@ -303,15 +303,19 @@ const useAppState = (): AppStateShape => {
     const fecthTransfers = async (): Promise<
       FunctionResult<FilePoolTransfer[]>
     > => {
-      if (authState.loading || authState.device_id === undefined)
+      const authStateCopy = { ...authState };
+      if (
+        authStateCopy.loading ||
+        authStateCopy.device_id === undefined ||
+        authStateCopy.pool_key_phrase === undefined
+      )
         return { succeed: false };
-      const KP_Copy = `${authState.pool_key_phrase}`;
 
       const { succeed, data, reason } = await ApiClient.get(
         "/file-transfer/{pool_kp}/{device_id}/all",
         {
-          pool_kp: KP_Copy,
-          device_id: authState.device_id,
+          pool_kp: authStateCopy.pool_key_phrase,
+          device_id: authStateCopy.device_id,
         }
       );
       if (!succeed || data === undefined || data.length === 0)
@@ -326,7 +330,12 @@ const useAppState = (): AppStateShape => {
     };
 
     useEffect(() => {
-      if (authState.loading || authState.device_id === undefined) return;
+      if (
+        authState.loading ||
+        authState.device_id === undefined ||
+        authState.pool_key_phrase === undefined
+      )
+        return;
       // when "pool_key_phrase" is set for the 1st time, the pools are already loaded, if it isn't the 1st time it's a pool change
       (async () => {
         setTransferState([true, null, []]);

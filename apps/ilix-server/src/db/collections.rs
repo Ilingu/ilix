@@ -127,6 +127,13 @@ impl DevicePoolsCollection for Client {
         if update_report.modified_count == 0 {
             return Err(ServerErrors::NotInPool);
         }
+
+        if let Ok(pool) = self.get_pool(key_phrase).await {
+            if pool.devices_id.is_empty() {
+                let _ = self.delete_pool(key_phrase).await;
+            }
+        }
+
         Ok(())
     }
 

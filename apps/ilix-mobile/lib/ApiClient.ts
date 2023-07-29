@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system";
-import {
+import type {
   DevicesPool,
   FilePoolTransfer,
   FunctionResult,
@@ -90,7 +90,7 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
 
 const SERVER_BASE_URL =
   process.env.NODE_ENV === "development"
-    ? "https://4ebf-193-32-126-220.ngrok-free.app"
+    ? "https://8713-193-32-126-226.ngrok-free.app"
     : "";
 
 export default class ApiClient {
