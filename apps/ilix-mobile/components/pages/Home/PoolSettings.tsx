@@ -118,7 +118,13 @@ const Pool: React.FC<PoolProps> = ({
         childProps={{ selectable: true }}
       >
         {is_current && <Text style={tw`italic text-amber-400`}>{">>> "}</Text>}
-        {pool_data.pool_name}
+        <Text
+          style={{
+            fontFamily: "monospace",
+          }}
+        >
+          {pool_data.pool_name}
+        </Text>
         {is_current && <Text style={tw`italic text-amber-400`}>{" <<<"}</Text>}
       </Button>
       <TouchableOpacity

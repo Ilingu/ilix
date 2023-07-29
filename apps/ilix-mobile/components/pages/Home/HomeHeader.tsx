@@ -28,7 +28,13 @@ export default function HomeHeader({
       <TouchableOpacity onPress={switchPool}>
         <Text style={tw`font-semibold text-white text-center text-[20px] mr-6`}>
           <Text style={tw`text-white italic`}>{"[ "}</Text>
-          {pool_name}
+          <Text
+            style={{
+              fontFamily: "monospace",
+            }}
+          >
+            {pool_name}
+          </Text>
           <Text style={tw`text-white italic`}>{" ]"}</Text>
         </Text>
       </TouchableOpacity>

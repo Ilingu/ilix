@@ -1,4 +1,3 @@
-import { Platform, UIManager } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 // Screens
@@ -21,13 +20,6 @@ export type RootStackParamList = {
   Home: undefined;
 };
 const { Screen, Navigator } = createNativeStackNavigator<RootStackParamList>();
-
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 export default function App() {
   const { authState, poolState, transferState } = useAppState();
@@ -55,13 +47,12 @@ export default function App() {
               <Screen
                 name="Home"
                 component={Home}
-                options={({ navigation }) => ({
+                options={() => ({
                   headerTitle: () => (
                     <HomeHeader
                       pool_name={poolState.pools?.current.pool_name}
                     />
                   ),
-
                   headerShown: true,
                   headerBackVisible: false,
                   headerStyle: {

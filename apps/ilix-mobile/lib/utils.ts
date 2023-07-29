@@ -1,5 +1,6 @@
 import { ToastAndroid } from "react-native";
 import { SHA3 } from "sha3";
+import * as Clipboard from "expo-clipboard";
 
 export const DegToRad = (deg: number): number => (deg * Math.PI) / 180;
 
@@ -49,3 +50,13 @@ export const range = (from: number, to: number): number[] => {
   if (rev) range.reverse();
   return range;
 };
+
+/**
+ * Sets the content of the user's clipboard.
+ *
+ * @param text The string to save to the clipboard.
+ * @returns On web, this returns a promise that fulfills to a boolean value indicating whether or not
+ * the string was saved to the user's clipboard. On iOS and Android, the promise always resolves to `true`.
+ */
+export const copyToClipboard = async (text: string) =>
+  await Clipboard.setStringAsync(text);

@@ -36,7 +36,7 @@ export default function Home({ navigation }: HomeNavigationProps) {
   const goHome = () =>
     navigation.dispatch(CommonActions.navigate({ name: "default" }));
   const switchPool = () =>
-    navigation.dispatch(CommonActions.navigate({ name: "SwitchPool" }));
+    navigation.dispatch(CommonActions.navigate({ name: "PoolSettings" }));
 
   useEffect(() => {
     navigation.setOptions({
