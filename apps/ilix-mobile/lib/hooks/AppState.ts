@@ -87,18 +87,16 @@ const useAppState = (): AppStateShape => {
           ];
     };
 
-    const logOut = async <T extends keyof RootStackParamList>(
-      navigation: NativeStackNavigationProp<RootStackParamList, T>
-    ) => {
+    const logOut = async () => {
       const poolState = poolStateRef.current;
-      if (poolState.pools?.pools === undefined)
-        return pushToast("Failed to log out, no pool");
 
-      const { succeed: ss_ok } = await SS_clear(poolState.pools?.pools);
+      let ss_ok = true;
+      if (poolState.pools?.pools !== undefined) {
+        const { succeed } = await SS_clear(poolState.pools?.pools);
+        ss_ok = succeed;
+      }
       const { succeed: as_ok } = await AS_Clear();
-
       if (!ss_ok || !as_ok) return pushToast("Failed to log out");
-      navigation.navigate("Auth");
 
       setAuthState((prev) => ({
         ...prev,
@@ -183,6 +181,7 @@ const useAppState = (): AppStateShape => {
 
       defaultState.addPool = addPool;
       defaultState.setPool = setPool;
+      defaultState.leavePool = leavePool;
 
       setPoolState(defaultState);
     };
@@ -216,7 +215,7 @@ const useAppState = (): AppStateShape => {
           current_index: new_index,
           pools: curState.pools?.pools ?? [],
           get current() {
-            return this.pools[this.current_index];
+            return this.pools[new_index];
           },
         },
         cascading_update: true,
@@ -227,28 +226,95 @@ const useAppState = (): AppStateShape => {
 
     const updatePool = async (
       index: number,
-      pool: StoredDevicesPool
+      new_pool?: StoredDevicesPool
     ): Promise<FunctionResult> => {
       const curState = { ...poolStateRef.current };
-      curState.pools?.pools?.splice(index, 1, pool);
+      const curPool = { ...curState.pools?.current };
 
-      const same_index = curState.pools?.current_index;
-      if (same_index === undefined) return { succeed: false };
+      if (new_pool === undefined)
+        curState.pools?.pools?.splice(index, 1); // delete
+      else curState.pools?.pools?.splice(index, 1, new_pool); // replace
+
+      const next_index =
+        new_pool === undefined
+          ? curState.pools?.pools.findIndex(
+              ({ SS_key_hashed_kp }) =>
+                curPool?.SS_key_hashed_kp === SS_key_hashed_kp
+            ) ?? 0
+          : curState.pools?.current_index;
+      if (next_index === undefined) return { succeed: false };
 
       const newState: PoolCtxShape = {
         ...curState,
-        pools: {
-          current_index: same_index,
-          pools: curState.pools?.pools ?? [],
-          get current() {
-            return this.pools[this.current_index];
-          },
-        },
+        pools:
+          curState.pools?.pools === undefined ||
+          curState.pools?.pools.length <= 0
+            ? undefined
+            : {
+                current_index: next_index,
+                pools: curState.pools?.pools,
+                get current() {
+                  return this.pools[this.current_index];
+                },
+              },
         cascading_update: true,
       };
 
       setPoolState(newState);
       return await AS_Store(POOL_KEY, newState.pools);
+    };
+
+    const leavePool = async (pool_index: number): Promise<FunctionResult> => {
+      const poolState = { ...poolStateRef.current };
+      const authState = { ...authStateRef.current };
+      if (authState.device_id === undefined) return { succeed: false };
+
+      if (poolState.pools?.pools.length === 1) {
+        if (authState.pool_key_phrase === undefined) return { succeed: false };
+
+        const { succeed: leave_ok } = await ApiClient.delete(
+          "/pool/{pool_kp}/leave",
+          {
+            pool_kp: authState.pool_key_phrase,
+          },
+          { device_id: authState.device_id }
+        );
+        if (!leave_ok) return { succeed: false };
+
+        authStateRef.current.logOut && authStateRef.current.logOut();
+        return { succeed: true };
+      }
+
+      if (poolState.pools?.current_index === pool_index) {
+        // switch before delete
+        const next_index = poolState.pools?.pools.findIndex(
+          (_, i) => i !== pool_index
+        );
+
+        if (next_index === undefined) return { succeed: false };
+        const { succeed } = await setPool(next_index);
+        if (!succeed) return { succeed: false };
+      }
+
+      const pool = poolState.pools?.pools[pool_index];
+      if (pool === undefined) return { succeed: false };
+
+      const { succeed, data: pool_key_phrase } = await SS_Get<string>(
+        pool.SS_key_hashed_kp
+      );
+      if (!succeed || typeof pool_key_phrase !== "string")
+        return { succeed: false };
+
+      const { succeed: leave_ok } = await ApiClient.delete(
+        "/pool/{pool_kp}/leave",
+        {
+          pool_kp: pool_key_phrase,
+        },
+        { device_id: authState.device_id }
+      );
+      if (!leave_ok) return { succeed: false };
+
+      return updatePool(pool_index, undefined); // replace this pool with "nothing" => it deletes pool
     };
 
     const refresh_pool = async () => {

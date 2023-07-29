@@ -38,7 +38,7 @@ import type { AuthNestedStack } from "../../../screens/Auth";
 // Icons
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import QrCodeScanner from "../../qrCode";
+import QrCodeScanner from "./qrCode";
 import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
 import SlideInView from "../../animations/SlideIn";
 
@@ -176,8 +176,8 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
             />
 
             <Button
-              onPress={() => setPosState("QrCode")}
-              style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
+              parentProps={{ onPress: () => setPosState("QrCode") }}
+              childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
             >
               <FontAwesome5 name="qrcode" size={16} color="white" /> Scan or
               enter sync code
@@ -186,8 +186,8 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
             {IsArgsOk() && (
               <FadeInView duration={500}>
                 <Button
-                  onPress={SubmitJoinReq}
-                  style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
+                  parentProps={{ onPress: SubmitJoinReq }}
+                  childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
                 >
                   <AntDesign name="login" size={16} color="white" /> Sign In
                 </Button>
@@ -251,8 +251,8 @@ const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
   ) : (
     <>
       <Button
-        onPress={() => setScanning(true)}
-        style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}
+        parentProps={{ onPress: () => setScanning(true) }}
+        childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}
       >
         <FontAwesome5 name="qrcode" size={16} color="white" /> Scan Qr Code
       </Button>
@@ -270,16 +270,16 @@ const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
       {IsCodeOk(SyncCode) ? (
         <FadeInView duration={500}>
           <Button
-            onPress={() => reportToParent(SyncCode, true)}
-            style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
+            parentProps={{ onPress: () => reportToParent(SyncCode, true) }}
+            childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
           >
             <FontAwesome5 name="save" size={16} color="white" /> Save
           </Button>
         </FadeInView>
       ) : (
         <Button
-          onPress={() => reportToParent(SyncCode, true)}
-          style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
+          parentProps={{ onPress: () => reportToParent(SyncCode, true) }}
+          childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
         >
           <FontAwesome5 name="backward" size={16} color="white" /> Back
         </Button>

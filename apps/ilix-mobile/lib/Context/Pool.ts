@@ -16,6 +16,7 @@ export interface PoolCtxShape {
     with_CC_update?: boolean
   ) => Promise<FunctionResult>;
   setPool?: (new_index: number) => Promise<FunctionResult>;
+  leavePool?: (pool_index: number) => Promise<FunctionResult>;
 }
 
 const PoolContext = createContext<PoolCtxShape>({

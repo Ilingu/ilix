@@ -13,6 +13,7 @@ export default function Splash({ navigation }: NavigationProps) {
   const AuthState = useContext(AuthContext);
   const PoolState = useContext(PoolContext);
 
+  // Always listen to changes in auth, e.g: if user logout it'll automatically redirect him to the "Auth" page
   useEffect(() => {
     if (!AuthState.loading && !PoolState.loading) {
       if (AuthState.logged_in && PoolState.pools !== undefined)

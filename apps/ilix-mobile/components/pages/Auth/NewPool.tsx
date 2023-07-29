@@ -123,8 +123,8 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
 
             {IsArgsOk() && (
               <Button
-                style={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white my-2`}
-                onPress={SubmitNewPool}
+                childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white my-2`}
+                parentProps={{ onPress: SubmitNewPool }}
               >
                 <FontAwesome5
                   name="lock"

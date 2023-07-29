@@ -1,26 +1,33 @@
 import { PropsWithChildren, ReactNode } from "react";
-import { Text, TouchableOpacity, ViewStyle } from "react-native";
+import {
+  Text,
+  TouchableOpacity,
+  type TouchableOpacityProps,
+  type TextProps,
+  type ViewStyle,
+} from "react-native";
 import tw from "twrnc";
 
 type ButtonViewProps = PropsWithChildren<{
-  style?: ViewStyle;
-  pStyle?: ViewStyle;
+  childStyle?: ViewStyle;
+  parentProps?: TouchableOpacityProps;
   pChild?: ReactNode;
-  onPress?: () => void;
+  childProps?: Omit<TextProps, "style">;
 }>;
 const Button: React.FC<ButtonViewProps> = ({
   children,
-  pStyle,
   pChild,
-  style,
-  onPress,
+  parentProps,
+  childStyle,
+  childProps,
 }) => (
-  <TouchableOpacity onPress={() => onPress && onPress()} style={pStyle}>
+  <TouchableOpacity {...parentProps}>
     {pChild}
     <Text
+      {...childProps}
       style={{
-        ...tw`text-base shadow rounded-lg h-10 text-center pt-2`,
-        ...style,
+        ...tw`text-base shadow-sm rounded-lg h-10 text-center pt-2`,
+        ...childStyle,
       }}
     >
       {children}
