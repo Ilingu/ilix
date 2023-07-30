@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -9,6 +9,7 @@ use mongodb::{
 };
 use mongodb_gridfs::{options::GridFSBucketOptions, GridFSBucket};
 use once_cell::sync::Lazy;
+use tokio::time::timeout;
 use tokio_stream::StreamExt;
 
 use crate::{
@@ -22,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    models::{DevicesPool, FilePoolTransfer, FilePoolTransferExt},
+    models::{DevicesPool, FileInfo, FilePoolTransfer, FilePoolTransferExt},
     DB_NAME, DEVICES_POOL_COLL, FILE_TRANSFER_COLL, GRIDFS_BUCKET_NAME,
 };
 
@@ -384,6 +385,7 @@ impl FilePoolTransferCollection for Client {
 
 #[async_trait]
 pub trait FileStorageGridFS {
+    async fn get_files_info(&self, files_ids: Vec<String>) -> Result<Vec<FileInfo>, ServerErrors>;
     async fn get_file(&self, file_id: &str) -> Result<(String, Vec<u8>), ServerErrors>;
     async fn get_and_decrypt_file(
         &self,
@@ -408,6 +410,71 @@ static BUCKET_OPTIONS: Lazy<GridFSBucketOptions> = Lazy::new(|| {
 
 #[async_trait]
 impl FileStorageGridFS for Client {
+    async fn get_files_info(&self, files_ids: Vec<String>) -> Result<Vec<FileInfo>, ServerErrors> {
+        let files_len = files_ids.len();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(files_len);
+
+        for file_id in files_ids {
+            let tx = tx.clone();
+            let client = self.clone();
+            tokio::spawn(async move {
+                let id =
+                    match ObjectId::from_str(&file_id).map_err(|_| ServerErrors::InvalidObjectId) {
+                        Ok(id) => id,
+                        Err(_) => {
+                            let _ = tx.send(Err(ServerErrors::InvalidObjectId)).await;
+                            return;
+                        }
+                    };
+
+                let result = client
+                    .database(DB_NAME)
+                    .collection::<FileInfo>("ilix_fs.files")
+                    .find_one(doc! {"_id": id}, None)
+                    .await
+                    .map_err(|_| ServerErrors::MongoError);
+
+                let file_info = match result {
+                    Ok(fi) => match fi {
+                        Some(file_info) => file_info,
+                        None => {
+                            let _ = tx.send(Err(ServerErrors::FileNotFound)).await;
+                            return;
+                        }
+                    },
+                    Err(_) => {
+                        let _ = tx.send(Err(ServerErrors::MongoError)).await;
+                        return;
+                    }
+                };
+
+                let _ = tx.send(Ok(file_info)).await;
+            });
+        }
+
+        let mut filenames = vec![];
+        loop {
+            match timeout(Duration::from_secs(1), rx.recv()).await {
+                Ok(Some(file_info)) => {
+                    match file_info {
+                        Ok(file_info) => filenames.push(file_info),
+                        Err(why) => return Err(why),
+                    }
+
+                    if filenames.len() == files_len {
+                        break;
+                    }
+                }
+                Ok(None) => {
+                    break;
+                }
+                Err(_) => return Err(ServerErrors::Custom("Took too long")),
+            }
+        }
+
+        Ok(filenames)
+    }
+
     async fn get_file(&self, file_id: &str) -> Result<(String, Vec<u8>), ServerErrors> {
         let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
 

@@ -18,6 +18,7 @@ pub enum ServerErrors<'a> {
     InvalidKeyPhrase,
     EncryptionError,
     DecryptionError,
+    FileNotFound,
     Custom(&'a str),
 }
 

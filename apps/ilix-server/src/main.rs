@@ -11,8 +11,9 @@ use db::{
 };
 use env_logger::Env;
 use services::{
+    file::{delete_file, get_file},
     file_transfer::{add_files_to_transfer, create_transfer, delete_transfer, get_all_transfer},
-    files::{delete_file, get_file},
+    files::get_files_info,
     pool::{delete_pool, get_pool, join_pool, leave_pool, new_pool},
 };
 use utils::console_log;
@@ -67,7 +68,8 @@ async fn main() -> std::io::Result<()> {
                     .service(add_files_to_transfer)
                     .service(delete_transfer),
             )
-            .service(web::scope("/files").service(get_file).service(delete_file))
+            .service(web::scope("/file").service(get_file).service(delete_file))
+            .service(web::scope("/files").service(get_files_info))
             .app_data(web::Data::new(db.clone()))
             .app_data(web::Data::new(app))
     })

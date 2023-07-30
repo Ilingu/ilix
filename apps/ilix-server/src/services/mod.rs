@@ -1,3 +1,4 @@
+pub mod file;
 pub mod file_transfer;
 pub mod files;
 pub mod pool;
