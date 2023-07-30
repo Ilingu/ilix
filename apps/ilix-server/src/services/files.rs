@@ -23,7 +23,7 @@ async fn get_files_info(
         return BAD_ARGS_RESP.clone();
     }
 
-    let db_result = db.client.get_files_info(info.files_ids.clone()).await;
+    let db_result = db.client.get_files_info(&info.files_ids).await;
     match db_result {
         Ok(files_info) => ResponsePayload::new(true, &files_info, None, None),
         Err(err) => {

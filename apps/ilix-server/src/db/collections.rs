@@ -1,15 +1,15 @@
-use std::{collections::HashMap, str::FromStr, time::Duration};
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use mongodb::{
     bson::{doc, oid::ObjectId},
-    options::IndexOptions,
+    options::{FindOneAndUpdateOptions, IndexOptions, ReturnDocument},
     Client, IndexModel,
 };
 use mongodb_gridfs::{options::GridFSBucketOptions, GridFSBucket};
 use once_cell::sync::Lazy;
-use tokio::time::timeout;
+use tokio::task::JoinSet;
 use tokio_stream::StreamExt;
 
 use crate::{
@@ -111,30 +111,54 @@ impl DevicePoolsCollection for Client {
     ) -> Result<(), ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
 
+        // delete all transfers/files left
+        let transfers_left = self.find_transfers(key_phrase, device_id).await?;
+        let mut task_set: JoinSet<Result<(), ServerErrors>> = JoinSet::new();
+        for FilePoolTransferExt {
+            _id, to, files_id, ..
+        } in transfers_left
+        {
+            let (client, key_phrase) = (self.clone(), key_phrase.clone());
+            task_set.spawn(async move {
+                client.delete_transfer(&key_phrase, &to, &_id).await?;
+                client.delete_files(&files_id).await?;
+                Ok(())
+            });
+        }
+        while let Some(res) = task_set.join_next().await {
+            res.map_err(|_| ServerErrors::MongoError)??;
+        }
+
+        // leave pool
         let obj_entry = format!("devices_id_to_name.{device_id}");
-        let update_report = self
+        let before_update_doc = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
-            .update_one(
+            .find_one_and_update(
                 doc! {"hashed_key_phrase": hashed_kp},
                 doc! {"$pull": {"devices_id": device_id}, "$unset": { obj_entry: "" } },
-                None,
+                FindOneAndUpdateOptions::builder()
+                    .return_document(Some(ReturnDocument::Before))
+                    .build(),
             )
             .await
-            .map_err(|_| ServerErrors::MongoError)?;
-        if update_report.matched_count == 0 {
-            return Err(ServerErrors::PoolNotFound);
-        }
-        if update_report.modified_count == 0 {
+            .map_err(|_| ServerErrors::MongoError)?
+            .ok_or(ServerErrors::PoolNotFound)?;
+
+        if !before_update_doc
+            .devices_id
+            .contains(&device_id.to_string())
+            || !before_update_doc
+                .devices_id_to_name
+                .contains_key(&device_id.to_string())
+        {
             return Err(ServerErrors::NotInPool);
         }
 
-        if let Ok(pool) = self.get_pool(key_phrase).await {
-            if pool.devices_id.is_empty() {
-                let _ = self.delete_pool(key_phrase).await;
-            }
+        // if before update, user count is equal to 1, after update the pool is empty, thus we delete it
+        if before_update_doc.devices_id.len() == 1 {
+            let _ = self.delete_pool(key_phrase).await;
         }
-
         Ok(())
     }
 
@@ -164,20 +188,31 @@ impl DevicePoolsCollection for Client {
         let pool = self.get_pool(key_phrase).await?;
         let hashed_kp = key_phrase.hash()?;
 
+        let mut task_set = JoinSet::new();
+        for id in pool.devices_id.clone() {
+            let (client, key_phrase) = (self.clone(), key_phrase.clone());
+            task_set.spawn(async move { client.find_transfers(&key_phrase, &id).await });
+        }
         let mut transfers_to_delete = vec![];
-        for id in &pool.devices_id {
-            let mut transfer = self.find_transfers(key_phrase, id).await?;
-            transfers_to_delete.append(&mut transfer);
+        while let Some(res) = task_set.join_next().await {
+            let mut transfers = res.map_err(|_| ServerErrors::MongoError)??;
+            transfers_to_delete.append(&mut transfers);
         }
 
+        let mut task_set: JoinSet<Result<(), ServerErrors>> = JoinSet::new();
         for FilePoolTransferExt {
             _id, to, files_id, ..
         } in transfers_to_delete
         {
-            self.delete_transfer(key_phrase, &to, &_id).await?;
-            for file_id in &files_id {
-                self.delete_file(file_id).await?;
-            }
+            let (client, key_phrase) = (self.clone(), key_phrase.clone());
+            task_set.spawn(async move {
+                client.delete_transfer(&key_phrase, &to, &_id).await?;
+                client.delete_files(&files_id).await?;
+                Ok(())
+            });
+        }
+        while let Some(res) = task_set.join_next().await {
+            res.map_err(|_| ServerErrors::MongoError)??
         }
 
         let delete_report = self
@@ -249,10 +284,11 @@ impl FilePoolTransferCollection for Client {
             .map_err(|_| ServerErrors::MongoError)?;
 
         let mut files_info = vec![];
-        while let Some(file_info) = cursor.try_next().await.map_err(|err| {
-            println!("{err:?}");
-            ServerErrors::MongoError
-        })? {
+        while let Some(file_info) = cursor
+            .try_next()
+            .await
+            .map_err(|_| ServerErrors::MongoError)?
+        {
             files_info.push(file_info);
         }
 
@@ -385,21 +421,18 @@ impl FilePoolTransferCollection for Client {
 
 #[async_trait]
 pub trait FileStorageGridFS {
-    async fn get_files_info(&self, files_ids: Vec<String>) -> Result<Vec<FileInfo>, ServerErrors>;
-    async fn get_file(&self, file_id: &str) -> Result<(String, Vec<u8>), ServerErrors>;
-    async fn get_and_decrypt_file(
+    async fn get_files_info(&self, files_ids: &[String]) -> Result<Vec<FileInfo>, ServerErrors>;
+    async fn get_file(
         &self,
         file_id: &str,
         key_phrase: &KeyPhrase,
     ) -> Result<(String, Vec<u8>), ServerErrors>;
-    async fn add_file(&self, filename: &str, file_buffer: &[u8]) -> Result<String, ServerErrors>;
-    async fn encrypt_and_add_file(
+    async fn add_files(
         &self,
-        filename: &str,
-        file_buffer: &[u8],
+        files_datas: Vec<(String, Vec<u8>)>,
         key_phrase: &KeyPhrase,
-    ) -> Result<String, ServerErrors>;
-    async fn delete_file(&self, file_id: &str) -> Result<(), ServerErrors>;
+    ) -> Result<Vec<String>, ServerErrors>;
+    async fn delete_files(&self, files_ids: &[String]) -> Result<(), ServerErrors>;
 }
 
 static BUCKET_OPTIONS: Lazy<GridFSBucketOptions> = Lazy::new(|| {
@@ -410,72 +443,38 @@ static BUCKET_OPTIONS: Lazy<GridFSBucketOptions> = Lazy::new(|| {
 
 #[async_trait]
 impl FileStorageGridFS for Client {
-    async fn get_files_info(&self, files_ids: Vec<String>) -> Result<Vec<FileInfo>, ServerErrors> {
-        let files_len = files_ids.len();
-        let (tx, mut rx) = tokio::sync::mpsc::channel(files_len);
-
-        for file_id in files_ids {
-            let tx = tx.clone();
+    async fn get_files_info(&self, files_ids: &[String]) -> Result<Vec<FileInfo>, ServerErrors> {
+        let mut task_set: JoinSet<Result<FileInfo, ServerErrors>> = JoinSet::new();
+        #[allow(clippy::unnecessary_to_owned)]
+        for file_id in files_ids.to_owned() {
             let client = self.clone();
-            tokio::spawn(async move {
-                let id =
-                    match ObjectId::from_str(&file_id).map_err(|_| ServerErrors::InvalidObjectId) {
-                        Ok(id) => id,
-                        Err(_) => {
-                            let _ = tx.send(Err(ServerErrors::InvalidObjectId)).await;
-                            return;
-                        }
-                    };
-
-                let result = client
+            task_set.spawn(async move {
+                let id = ObjectId::from_str(&file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
+                let file_info = client
                     .database(DB_NAME)
                     .collection::<FileInfo>("ilix_fs.files")
                     .find_one(doc! {"_id": id}, None)
                     .await
-                    .map_err(|_| ServerErrors::MongoError);
-
-                let file_info = match result {
-                    Ok(fi) => match fi {
-                        Some(file_info) => file_info,
-                        None => {
-                            let _ = tx.send(Err(ServerErrors::FileNotFound)).await;
-                            return;
-                        }
-                    },
-                    Err(_) => {
-                        let _ = tx.send(Err(ServerErrors::MongoError)).await;
-                        return;
-                    }
-                };
-
-                let _ = tx.send(Ok(file_info)).await;
+                    .map_err(|_| ServerErrors::MongoError)?
+                    .ok_or(ServerErrors::FileNotFound)?;
+                Ok(file_info)
             });
         }
 
-        let mut filenames = vec![];
-        loop {
-            match timeout(Duration::from_secs(1), rx.recv()).await {
-                Ok(Some(file_info)) => {
-                    match file_info {
-                        Ok(file_info) => filenames.push(file_info),
-                        Err(why) => return Err(why),
-                    }
-
-                    if filenames.len() == files_len {
-                        break;
-                    }
-                }
-                Ok(None) => {
-                    break;
-                }
-                Err(_) => return Err(ServerErrors::Custom("Took too long")),
-            }
+        let mut files_info = vec![];
+        while let Some(res) = task_set.join_next().await {
+            let file_info = res.map_err(|_| ServerErrors::MongoError)??;
+            files_info.push(file_info);
         }
 
-        Ok(filenames)
+        Ok(files_info)
     }
 
-    async fn get_file(&self, file_id: &str) -> Result<(String, Vec<u8>), ServerErrors> {
+    async fn get_file(
+        &self,
+        file_id: &str,
+        key_phrase: &KeyPhrase,
+    ) -> Result<(String, Vec<u8>), ServerErrors> {
         let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
 
         let id = ObjectId::from_str(file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
@@ -484,43 +483,74 @@ impl FileStorageGridFS for Client {
             .await
             .map_err(|_| ServerErrors::MongoError)?;
 
-        let file_buffer = cursor.collect::<Vec<_>>().await.concat();
-        Ok((filename, file_buffer))
-    }
-    async fn get_and_decrypt_file(
-        &self,
-        file_id: &str,
-        key_phrase: &KeyPhrase,
-    ) -> Result<(String, Vec<u8>), ServerErrors> {
-        let (filename, enc_datas) = self.get_file(file_id).await?;
-        let decrypted_datas = decrypt_datas(&key_phrase.0, &enc_datas)?;
+        let enc_file_buffer = cursor.collect::<Vec<_>>().await.concat();
+        let decrypted_datas = decrypt_datas(&key_phrase.0, &enc_file_buffer)?;
         Ok((filename, decrypted_datas))
     }
 
-    async fn add_file(&self, filename: &str, file_buffer: &[u8]) -> Result<String, ServerErrors> {
-        let mut bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
-        let id = bucket
-            .upload_from_stream(filename, file_buffer, None)
-            .await
-            .map_err(|_| ServerErrors::MongoError)?;
-        Ok(id.to_string())
-    }
-    async fn encrypt_and_add_file(
+    async fn add_files(
         &self,
-        filename: &str,
-        file_buffer: &[u8],
+        files_datas: Vec<(String, Vec<u8>)>,
         key_phrase: &KeyPhrase,
-    ) -> Result<String, ServerErrors> {
-        let enc_file_buf = encrypt_datas(&key_phrase.0, file_buffer)?;
-        self.add_file(filename, &enc_file_buf).await
+    ) -> Result<Vec<String>, ServerErrors> {
+        // encrypt files
+        let mut task_set = JoinSet::new();
+        for (filename, file_buffer) in files_datas {
+            let key_phrase = key_phrase.clone();
+            task_set.spawn(async move {
+                let enc_buf = encrypt_datas(&key_phrase.0, &file_buffer)?;
+                Ok((filename, enc_buf))
+            });
+        }
+
+        let mut enc_files = vec![];
+        while let Some(res) = task_set.join_next().await {
+            let enc_file = res.map_err(|_| ServerErrors::MongoError)??;
+            enc_files.push(enc_file);
+        }
+
+        // add files
+        let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
+
+        let mut task_set = JoinSet::new();
+        for (filename, enc_buf) in enc_files {
+            let mut bucket = bucket.clone();
+            task_set.spawn(async move {
+                bucket
+                    .upload_from_stream(&filename, &enc_buf[..], None)
+                    .await
+                    .map_err(|_| ServerErrors::MongoError)
+            });
+        }
+
+        let mut files_ids = vec![];
+        while let Some(res) = task_set.join_next().await {
+            let id = res.map_err(|_| ServerErrors::MongoError)??;
+            files_ids.push(id.to_string())
+        }
+
+        Ok(files_ids)
     }
 
-    async fn delete_file(&self, file_id: &str) -> Result<(), ServerErrors> {
+    async fn delete_files(&self, files_ids: &[String]) -> Result<(), ServerErrors> {
         let bucket = GridFSBucket::new(self.database(DB_NAME), Some(BUCKET_OPTIONS.to_owned()));
-        let id = ObjectId::from_str(file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
-        bucket
-            .delete(id)
-            .await
-            .map_err(|_| ServerErrors::MongoError)
+
+        let mut task_set = JoinSet::new();
+        #[allow(clippy::unnecessary_to_owned)]
+        for file_id in files_ids.to_owned() {
+            let bucket = bucket.clone();
+            task_set.spawn(async move {
+                let id = ObjectId::from_str(&file_id).map_err(|_| ServerErrors::InvalidObjectId)?;
+                bucket
+                    .delete(id)
+                    .await
+                    .map_err(|_| ServerErrors::MongoError)
+            });
+        }
+
+        while let Some(res) = task_set.join_next().await {
+            res.map_err(|_| ServerErrors::MongoError)??;
+        }
+        Ok(())
     }
 }

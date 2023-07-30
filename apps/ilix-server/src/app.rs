@@ -1,10 +1,10 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::env;
 
 use crate::utils::is_prod;
 
-#[derive(Debug, PartialEq)]
-pub enum ServerErrors<'a> {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ServerErrors {
     MongoError,
     DictionnaryNotFound,
     InvalidObjectId,
@@ -19,15 +19,35 @@ pub enum ServerErrors<'a> {
     EncryptionError,
     DecryptionError,
     FileNotFound,
-    Custom(&'a str),
+    HashError,
 }
 
-impl ToString for ServerErrors<'_> {
-    fn to_string(&self) -> String {
-        match self {
-            ServerErrors::Custom(err) => err.to_string(),
-            _ => format!("{self:?}"),
+impl ServerErrors {
+    #[allow(dead_code)]
+    pub fn parse(input: &str) -> Result<Self> {
+        match input {
+            "MongoError" => Ok(Self::MongoError),
+            "DictionnaryNotFound" => Ok(Self::DictionnaryNotFound),
+            "InvalidObjectId" => Ok(Self::InvalidObjectId),
+            "PoolNotFound" => Ok(Self::PoolNotFound),
+            "TransferNotFound" => Ok(Self::TransferNotFound),
+            "AlreadyInPool" => Ok(Self::AlreadyInPool),
+            "NotInPool" => Ok(Self::NotInPool),
+            "NotInTransfer" => Ok(Self::NotInTransfer),
+            "EnvVarNotFound" => Ok(Self::EnvVarNotFound),
+            "ParseError" => Ok(Self::ParseError),
+            "InvalidKeyPhrase" => Ok(Self::InvalidKeyPhrase),
+            "EncryptionError" => Ok(Self::EncryptionError),
+            "DecryptionError" => Ok(Self::DecryptionError),
+            "FileNotFound" => Ok(Self::FileNotFound),
+            _ => Err(anyhow!("")),
         }
+    }
+}
+
+impl ToString for ServerErrors {
+    fn to_string(&self) -> String {
+        format!("{self:?}")
     }
 }
 

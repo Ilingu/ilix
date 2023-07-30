@@ -38,7 +38,7 @@ async fn get_file(
         return Either::Left(BAD_ARGS_RESP.clone());
     }
 
-    let db_result = db.client.get_and_decrypt_file(&file_id, &key_phrase).await;
+    let db_result = db.client.get_file(&file_id, &key_phrase).await;
     match db_result {
         Ok((filename, filebuf)) => {
             let filepath = format!("./tmp/{}-{filename}", Uuid::new_v4());
@@ -98,7 +98,7 @@ async fn delete_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> impl 
         }
     }
 
-    let db_result = db.client.delete_file(&file_id).await;
+    let db_result = db.client.delete_files(&[file_id.into_inner()]).await;
     match db_result {
         Ok(_) => ResponsePayload::new(true, &(), None, None),
         Err(err) => {

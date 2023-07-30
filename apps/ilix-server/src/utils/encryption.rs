@@ -18,7 +18,7 @@ fn hash_key(key: &str) -> String {
 }
 
 /// return the encrypted datas (nonce + encrypted datas)
-pub fn encrypt_datas(key: &str, datas: &[u8]) -> Result<Vec<u8>, ServerErrors<'static>> {
+pub fn encrypt_datas(key: &str, datas: &[u8]) -> Result<Vec<u8>, ServerErrors> {
     let valid_key = hash_key(key);
     let key = Key::from_slice(valid_key.as_bytes());
 
@@ -36,7 +36,7 @@ pub fn encrypt_datas(key: &str, datas: &[u8]) -> Result<Vec<u8>, ServerErrors<'s
 }
 
 /// return the decrypted datas (the encrypted datas must contains the nonce)
-pub fn decrypt_datas(key: &str, enc_datas: &[u8]) -> Result<Vec<u8>, ServerErrors<'static>> {
+pub fn decrypt_datas(key: &str, enc_datas: &[u8]) -> Result<Vec<u8>, ServerErrors> {
     let valid_key = hash_key(key);
     let key = Key::from_slice(valid_key.as_bytes());
     let cipher = XChaCha20Poly1305::new(key);

@@ -37,6 +37,7 @@ pub struct FileInfo {
     pub filename: String,
     pub chunkSize: usize,
     pub length: usize,
+    #[serde(skip_serializing)]
     pub md5: String,
     pub uploadDate: DateTime,
 }

@@ -136,17 +136,10 @@ async fn add_files_to_transfer(
         );
     }
 
-    let mut files_id = vec![];
-    for (filename, file_buffer) in files {
-        match db
-            .client
-            .encrypt_and_add_file(&filename, &file_buffer, &key_phrase)
-            .await
-        {
-            Ok(file_id) => files_id.push(file_id),
-            Err(err) => return ResponsePayload::new(false, &(), None, Some(err.to_string())),
-        }
-    }
+    let files_id = match db.client.add_files(files, &key_phrase).await {
+        Ok(fids) => fids,
+        Err(err) => return ResponsePayload::new(false, &(), None, Some(err.to_string())),
+    };
 
     let db_result = db
         .client
@@ -156,11 +149,7 @@ async fn add_files_to_transfer(
     match db_result {
         Ok(_) => ResponsePayload::new(true, &files_id, None, None),
         Err(err) => {
-            // failed to add transfer, delete all added files
-            for file_id in files_id {
-                let _ = db.client.delete_file(&file_id).await;
-            }
-
+            let _ = db.client.delete_files(&files_id).await; // failed to add transfer, delete all added files
             let err_status_code = match err {
                 ServerErrors::TransferNotFound => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -202,15 +191,10 @@ async fn delete_transfer(
         }
     };
 
-    let mut err = None;
-    for file_id in files_id_to_delete {
-        err = db.client.delete_file(&file_id).await.err(); // if there is an error, ignore it to keep the loop running and thus to delete others files
-    }
-
-    if let Some(err) = err {
+    if let Err(err) = db.client.delete_files(&files_id_to_delete).await {
         let err_status_code = match err {
             ServerErrors::InvalidObjectId => StatusCode::BAD_REQUEST,
-            _ => StatusCode::MULTI_STATUS,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         ResponsePayload::new(

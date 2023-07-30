@@ -14,12 +14,13 @@ fn is_key_phrase(str: &str) -> bool {
     str.split('-').count() == KEY_PHRASE_LEN
 }
 
+#[derive(Clone)]
 pub struct KeyPhrase(pub String);
 
 impl TryFrom<&str> for KeyPhrase {
-    type Error = ServerErrors<'static>;
+    type Error = ServerErrors;
 
-    fn try_from(key_phrase: &str) -> Result<Self, ServerErrors<'static>> {
+    fn try_from(key_phrase: &str) -> Result<Self, ServerErrors> {
         if !is_key_phrase(key_phrase) {
             return Err(ServerErrors::InvalidKeyPhrase);
         }
@@ -29,9 +30,9 @@ impl TryFrom<&str> for KeyPhrase {
 }
 
 impl TryFrom<web::Path<String>> for KeyPhrase {
-    type Error = ServerErrors<'static>;
+    type Error = ServerErrors;
 
-    fn try_from(key_phrase: web::Path<String>) -> Result<Self, ServerErrors<'static>> {
+    fn try_from(key_phrase: web::Path<String>) -> Result<Self, ServerErrors> {
         let kp = key_phrase.into_inner();
         if !is_key_phrase(&kp) {
             return Err(ServerErrors::InvalidKeyPhrase);
@@ -42,9 +43,9 @@ impl TryFrom<web::Path<String>> for KeyPhrase {
 }
 
 impl TryFrom<String> for KeyPhrase {
-    type Error = ServerErrors<'static>;
+    type Error = ServerErrors;
 
-    fn try_from(key_phrase: String) -> Result<Self, ServerErrors<'static>> {
+    fn try_from(key_phrase: String) -> Result<Self, ServerErrors> {
         if !is_key_phrase(&key_phrase) {
             return Err(ServerErrors::InvalidKeyPhrase);
         }
@@ -62,7 +63,7 @@ impl KeyPhrase {
     ///     - for `words_number=5`; there are approx **1e26** unique possibilities
     ///     - for `words_number=20`; there are approx **1e105** unique possibilities
     ///     - more globally there are: **178187^words_number** unique possibilities
-    pub fn new(words_number: usize) -> Result<Self, ServerErrors<'static>> {
+    pub fn new(words_number: usize) -> Result<Self, ServerErrors> {
         let dictionary = fs::read_to_string("./Assets/english_dictionary_words.txt")
             .map_err(|_| ServerErrors::DictionnaryNotFound)?;
         let words = dictionary.lines().collect::<Vec<_>>();
@@ -79,13 +80,13 @@ impl KeyPhrase {
         Ok(Self(key_phrase.join("-")))
     }
 
-    pub fn hash(&self) -> Result<String, ServerErrors<'static>> {
+    pub fn hash(&self) -> Result<String, ServerErrors> {
         let hash_round = env::var("HASH_ROUND")
             .map_err(|_| ServerErrors::EnvVarNotFound)?
             .parse::<usize>()
             .map_err(|_| ServerErrors::ParseError)?;
         if hash_round < 5 {
-            return Err(ServerErrors::Custom("hash round not safe enough"));
+            return Err(ServerErrors::HashError);
         }
 
         let mut hasher = Sha3_256::new();
