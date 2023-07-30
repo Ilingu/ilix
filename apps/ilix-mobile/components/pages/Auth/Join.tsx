@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 // datas
 import PoolContext from "../../../lib/Context/Pool";
@@ -10,10 +10,12 @@ import {
   ToastDuration,
   pushToast,
 } from "../../../lib/utils";
+import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
 
 // ui
 import tw from "twrnc";
 import ColorScheme from "../../../lib/Theme";
+import SlideInView from "../../animations/SlideIn";
 
 // React native
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -38,29 +40,30 @@ import type { AuthNestedStack } from "../../../screens/Auth";
 // Icons
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import QrCodeScanner from "./qrCode";
-import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
-import SlideInView from "../../animations/SlideIn";
+import { useFocusEffect } from "@react-navigation/native";
 
-const [ScreenWidth, ScreenHeight] = [
-  Dimensions.get("window").width,
-  Dimensions.get("window").height,
-];
+const { width: _, height: ScreenHeight } = Dimensions.get("window");
 
 const JoinHomeCenterYPos = ScreenHeight / 2 - (289.9 - 28) / 2;
 const QrCodeCenterYPos = ScreenHeight / 2 - 335 / 4 + 2;
 
 type JoinNavigationProps = NativeStackScreenProps<AuthNestedStack, "Join">;
-const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
+const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
   const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
   const { addPool } = useContext(PoolContext);
 
   const [SyncCode, setSyncCode] = useState("");
   const [DeviceName, setDeviceName] = useState("");
-
-  // animation
   const [posState, setPosState] = useState<"JoinHome" | "QrCode">("JoinHome");
 
+  useFocusEffect(
+    useCallback(() => {
+      // Do something when the screen is focused
+      route.params?.qrResult && setSyncCode(route.params?.qrResult);
+    }, [route.params?.qrResult])
+  );
+
+  // animation
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: () => true,
@@ -71,6 +74,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
     })
   ).current;
 
+  // Components functions
   const SubmitJoinReq = async () => {
     if (typeof device_id !== "string") return pushToast("No device_id found");
     if (!IsArgsOk()) return pushToast("Invalid arguments");
@@ -214,10 +218,10 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
           style={tw`w-3/4 p-4 border-2 border-black bg-white rounded-xl z-10`}
         >
           <QrCodeHandler
-            reportToParent={(code, back = false) => {
-              setSyncCode(code);
-              back && setPosState("JoinHome");
-            }}
+            SyncCode={SyncCode}
+            setSyncCode={setSyncCode}
+            back={() => setPosState("JoinHome")}
+            qrScan={() => navigation.navigate("QrCodeScanner")}
           />
         </SlideInView>
 
@@ -228,64 +232,55 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation }) => {
 };
 
 type QrProps = {
-  reportToParent: (code: string, back?: boolean) => void;
+  SyncCode: string;
+  setSyncCode: React.Dispatch<React.SetStateAction<string>>;
+
+  back: () => void;
+  qrScan: () => void;
 };
-const QrCodeHandler: React.FC<QrProps> = ({ reportToParent }) => {
-  const [SyncCode, setSyncCode] = useState("");
-  const [scanning, setScanning] = useState(false);
+const QrCodeHandler: React.FC<QrProps> = ({
+  SyncCode,
+  setSyncCode,
 
-  const writeTimeout = useRef<NodeJS.Timeout | null>(null);
-  useEffect(() => {
-    writeTimeout.current && clearTimeout(writeTimeout.current);
-    writeTimeout.current = setTimeout(() => reportToParent(SyncCode), 5000);
-  }, [SyncCode]);
+  qrScan,
+  back,
+}) => (
+  <>
+    <Button
+      parentProps={{ onPress: qrScan }}
+      childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}
+    >
+      <FontAwesome5 name="qrcode" size={16} color="white" /> Scan Qr Code
+    </Button>
 
-  return scanning ? (
-    <QrCodeScanner
-      onScanned={(data) => {
-        if (!IsCodeOk(data)) pushToast("Invalid sync code");
-        setScanning(false);
-        setSyncCode(data);
-      }}
+    <Text style={{ color: ColorScheme.PRIMARY_CONTENT }}>
+      Or enter sync code manually
+    </Text>
+    <TextInput
+      placeholder="20 words sync code"
+      value={SyncCode}
+      onChangeText={setSyncCode}
+      style={tw`border-2 border-black rounded-lg w-full h-10 text-center`}
     />
-  ) : (
-    <>
-      <Button
-        parentProps={{ onPress: () => setScanning(true) }}
-        childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}
-      >
-        <FontAwesome5 name="qrcode" size={16} color="white" /> Scan Qr Code
-      </Button>
 
-      <Text style={{ color: ColorScheme.PRIMARY_CONTENT }}>
-        Or enter sync code manually
-      </Text>
-      <TextInput
-        placeholder="20 words sync code"
-        value={SyncCode}
-        onChangeText={setSyncCode}
-        style={tw`border-2 border-black rounded-lg w-full h-10 text-center`}
-      />
-
-      {IsCodeOk(SyncCode) ? (
-        <FadeInView duration={500}>
-          <Button
-            parentProps={{ onPress: () => reportToParent(SyncCode, true) }}
-            childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
-          >
-            <FontAwesome5 name="save" size={16} color="white" /> Save
-          </Button>
-        </FadeInView>
-      ) : (
+    {IsCodeOk(SyncCode) ? (
+      <FadeInView duration={500}>
         <Button
-          parentProps={{ onPress: () => reportToParent(SyncCode, true) }}
+          parentProps={{ onPress: back }}
           childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
         >
-          <FontAwesome5 name="backward" size={16} color="white" /> Back
+          <FontAwesome5 name="save" size={16} color="white" /> Save
         </Button>
-      )}
-    </>
-  );
-};
+      </FadeInView>
+    ) : (
+      <Button
+        parentProps={{ onPress: back }}
+        childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
+      >
+        <FontAwesome5 name="backward" size={16} color="white" /> Back
+      </Button>
+    )}
+  </>
+);
 
 export default Join;

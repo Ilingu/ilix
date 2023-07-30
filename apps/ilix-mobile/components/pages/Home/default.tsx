@@ -9,11 +9,7 @@ import type { HomeNestedStack } from "../../../screens/Home";
 import AuthContext from "../../../lib/Context/Auth";
 import ColorScheme from "../../../lib/Theme";
 import Button from "../../design/Button";
-import {
-  NativeStackNavigationProp,
-  NativeStackScreenProps,
-} from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../App";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import TransfersContext from "../../../lib/Context/Transfer";
 
 type InboxNavigationProps = NativeStackScreenProps<HomeNestedStack, "default">;

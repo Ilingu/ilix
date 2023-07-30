@@ -7,11 +7,12 @@ import usePreventNav from "../lib/hooks/PreventNav";
 
 import Join from "../components/pages/Auth/Join";
 import NewPool from "../components/pages/Auth/NewPool";
+import QrCodeScanner from "../components/pages/Auth/QrCodeScanner";
 
 export type AuthNestedStack = {
-  Auth: undefined;
-  Join: undefined;
+  Join?: { qrResult: string };
   NewPool: undefined;
+  QrCodeScanner: undefined;
 };
 const { Screen, Navigator } = createNativeStackNavigator<AuthNestedStack>();
 
@@ -26,6 +27,7 @@ export default function AuthRouter({ navigation, route }: NavigationProps) {
     >
       <Screen name="Join" component={Join} />
       <Screen name="NewPool" component={NewPool} />
+      <Screen name="QrCodeScanner" component={QrCodeScanner} />
     </Navigator>
   );
 }
