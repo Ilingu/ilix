@@ -23,8 +23,8 @@ export interface StoredDevicesPool extends DevicesPool {
 }
 
 export interface FilePoolTransfer {
-  _id: string;
+  _id: string; // transfer id
   to: string; // device id
   from: string; // device id
-  files_id: string[]; // _id pointer reference
+  files_id: string[]; // _id pointer reference to files
 }

@@ -59,6 +59,7 @@ const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({
               data={pools?.pools}
               renderItem={({ index, item }) => (
                 <Pool
+                  key={index}
                   is_current={index === pools?.current_index}
                   pool_data={item}
                   Switch={async () => {

@@ -199,7 +199,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
             )}
 
             <View style={tw`flex flex-row items-center mt-2 ml-1`}>
-              <TouchableOpacity onPress={() => navigation.push("NewPool")}>
+              <TouchableOpacity onPress={() => navigation.navigate("NewPool")}>
                 <Text
                   style={tw`italic text-xs text-[${ColorScheme.PRIMARY}] underline`}
                 >

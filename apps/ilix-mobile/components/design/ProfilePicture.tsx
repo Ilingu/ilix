@@ -13,7 +13,9 @@ export default function ProfilePicture({ size, width, height, style }: Props) {
       width={width}
       height={height}
       style={style}
-      uri={`https://source.boringavatars.com/beam/${size ?? 120}`}
+      uri={`https://source.boringavatars.com/beam/${
+        size ?? 120
+      }/?colors=FECA4E,FECA4E,5380CC`}
     />
   );
 }

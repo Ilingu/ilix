@@ -2,7 +2,6 @@ import { Text, View } from "react-native";
 import tw from "twrnc";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useContext } from "react";
-import { StatusBar } from "expo-status-bar";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import ParticleView from "../../animations/Particles";
 import type { HomeNestedStack } from "../../../screens/Home";
@@ -26,12 +25,12 @@ const HomeDefault: React.FC<InboxNavigationProps> = ({ navigation }) => {
         <View
           style={tw`w-3/4 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}
         >
-          <Text style={tw`text-center text-xl text-[${ColorScheme.TEXT}] mt-1`}>
+          <Text
+            style={tw`text-center text-xl text-[${ColorScheme.TEXT}] mt-1`}
+            selectable
+          >
             Welcome{" "}
-            <Text style={tw`font-bold text-amber-400`} selectable>
-              {device_name}
-            </Text>
-            !
+            <Text style={tw`font-bold text-amber-400`}>{device_name}</Text>!
           </Text>
 
           <View style={tw`flex justify-center items-center my-2`}>
@@ -55,7 +54,7 @@ const HomeDefault: React.FC<InboxNavigationProps> = ({ navigation }) => {
             }}
           >
             <AntDesign name="inbox" size={16} color="white" />
-            {"  "}Inbox Transfer
+            {"  "}Transfer Inbox
           </Button>
           <Button
             childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-4 mx-2`}
@@ -75,7 +74,6 @@ const HomeDefault: React.FC<InboxNavigationProps> = ({ navigation }) => {
           </Button>
         </View>
       </ParticleView>
-      <StatusBar style="auto" backgroundColor="black" />
     </SafeAreaProvider>
   );
 };

@@ -3,15 +3,20 @@ import type { RootStackParamList } from "../App";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import usePreventNav from "../lib/hooks/PreventNav";
 import HomeDefault from "../components/pages/Home/default";
-import Inbox from "../components/pages/Home/Inbox";
+import Inbox from "../components/pages/Home/Inbox/Inbox";
 import { useContext, useEffect } from "react";
 import HomeHeader from "../components/pages/Home/HomeHeader";
 import PoolContext from "../lib/Context/Pool";
 import { CommonActions } from "@react-navigation/native";
 import PoolSettings from "../components/pages/Home/PoolSettings";
-import SendTransfer from "../components/pages/Home/Send";
-import { StoredDevicesPool } from "../lib/types/interfaces";
+import SendTransfer from "../components/pages/Home/Send/Send";
+import type {
+  FilePoolTransfer,
+  StoredDevicesPool,
+} from "../lib/types/interfaces";
 import JoinLink from "../components/pages/Home/JoinLink";
+import { StatusBar } from "expo-status-bar";
+import ViewTransfer from "../components/pages/Home/Inbox/ViewTransfer";
 
 export type HomeNestedStack = {
   default: undefined;
@@ -20,6 +25,9 @@ export type HomeNestedStack = {
   PoolSettings: undefined;
   JoinLink: {
     pool: StoredDevicesPool;
+  };
+  ViewTransfer: {
+    transfer: FilePoolTransfer;
   };
 };
 const { Screen, Navigator } = createNativeStackNavigator<HomeNestedStack>();
@@ -52,19 +60,23 @@ export default function Home({ navigation }: HomeNavigationProps) {
   }, [navigation, pools]);
 
   return (
-    <Navigator
-      initialRouteName="default"
-      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
-    >
-      <Screen name="default" component={HomeDefault} />
-      <Screen name="inbox" component={Inbox} />
-      <Screen name="send" component={SendTransfer} />
-      <Screen name="JoinLink" component={JoinLink} />
-      <Screen
-        name="PoolSettings"
-        component={PoolSettings}
-        options={{ animation: "slide_from_bottom" }}
-      />
-    </Navigator>
+    <>
+      <Navigator
+        initialRouteName="default"
+        screenOptions={{ headerShown: false, animation: "slide_from_right" }}
+      >
+        <Screen name="default" component={HomeDefault} />
+        <Screen name="inbox" component={Inbox} />
+        <Screen name="send" component={SendTransfer} />
+        <Screen name="JoinLink" component={JoinLink} />
+        <Screen name="ViewTransfer" component={ViewTransfer} />
+        <Screen
+          name="PoolSettings"
+          component={PoolSettings}
+          options={{ animation: "slide_from_bottom" }}
+        />
+      </Navigator>
+      <StatusBar style="auto" backgroundColor="black" />
+    </>
   );
 }
