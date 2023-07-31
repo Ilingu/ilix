@@ -8,12 +8,7 @@ type Props = {
   switchPool?: () => void;
   goHome?: () => void;
 };
-export default function HomeHeader({
-  pool_name,
-  openAddPool,
-  switchPool,
-  goHome,
-}: Props) {
+export default function HomeHeader({ pool_name, openAddPool, switchPool, goHome }: Props) {
   return (
     <View style={tw`flex-1`}>
       <View style={tw`absolute left-0 -top-1.5 z-10`}>
@@ -31,8 +26,7 @@ export default function HomeHeader({
           <Text
             style={{
               fontFamily: "monospace",
-            }}
-          >
+            }}>
             {pool_name}
           </Text>
           <Text style={tw`text-white italic`}>{" ]"}</Text>
@@ -41,8 +35,7 @@ export default function HomeHeader({
 
       <TouchableOpacity
         onPress={openAddPool}
-        style={tw`absolute right-7 -top-1 z-10 bg-white w-8 h-8 rounded flex justify-center items-center`}
-      >
+        style={tw`absolute right-7 -top-1 z-10 bg-white w-8 h-8 rounded flex justify-center items-center`}>
         <AntDesign name="plussquare" size={16} color="black" />
       </TouchableOpacity>
     </View>

@@ -1,6 +1,5 @@
 import { PropsWithChildren, useEffect, useState } from "react";
-import { View, ViewStyle, useWindowDimensions } from "react-native";
-import type { PanResponderInstance } from "react-native";
+import { View, ViewStyle, useWindowDimensions, type PanResponderInstance } from "react-native";
 import tw from "twrnc";
 import { DegToRad } from "../../lib/utils";
 
@@ -63,10 +62,7 @@ const ParticleView: React.FC<ParticleViewProps> = ({
     <View style={style}>
       {children}
 
-      <View
-        style={tw`absolute w-full h-full`}
-        {...(panResponder && panResponder.panHandlers)}
-      >
+      <View style={tw`absolute w-full h-full`} {...panResponder?.panHandlers}>
         {particles.map(({ x, y, size, tick }, i) => {
           const size_variation = size + Math.cos(DegToRad(tick * 0.5)) * 5;
           return (
@@ -83,8 +79,7 @@ const ParticleView: React.FC<ParticleViewProps> = ({
                 zIndex: -10,
                 backgroundColor: "#000000",
                 opacity:
-                  ((i + 1) / particles.length) *
-                  (0.5 + Math.cos(DegToRad(tick * 0.25)) * 0.05),
+                  ((i + 1) / particles.length) * (0.5 + Math.cos(DegToRad(tick * 0.25)) * 0.05),
               }}
             />
           );

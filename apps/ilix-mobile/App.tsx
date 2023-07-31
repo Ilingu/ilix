@@ -40,19 +40,14 @@ export default function App() {
               screenOptions={{
                 headerShown: false,
                 animation: "slide_from_right",
-              }}
-            >
+              }}>
               <Screen name="Splash" component={Splash} />
               <Screen name="Auth" component={AuthRouter} />
               <Screen
                 name="Home"
                 component={Home}
                 options={() => ({
-                  headerTitle: () => (
-                    <HomeHeader
-                      pool_name={poolState.pools?.current.pool_name}
-                    />
-                  ),
+                  headerTitle: () => <HomeHeader pool_name={poolState.pools?.current.pool_name} />,
                   headerShown: true,
                   headerBackVisible: false,
                   headerStyle: {

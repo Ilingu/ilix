@@ -1,7 +1,4 @@
-import {
-  NativeStackScreenProps,
-  createNativeStackNavigator,
-} from "@react-navigation/native-stack";
+import { NativeStackScreenProps, createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
 import usePreventNav from "../lib/hooks/PreventNav";
 
@@ -18,13 +15,12 @@ const { Screen, Navigator } = createNativeStackNavigator<AuthNestedStack>();
 
 type NavigationProps = NativeStackScreenProps<RootStackParamList, "Auth">;
 export default function AuthRouter({ navigation, route }: NavigationProps) {
-  (route.params?.preventNav ?? true) && usePreventNav(navigation, true);
+  usePreventNav(navigation, route.params?.preventNav ?? true, true);
 
   return (
     <Navigator
       initialRouteName="Join"
-      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
-    >
+      screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
       <Screen name="Join" component={Join} />
       <Screen name="NewPool" component={NewPool} />
       <Screen name="QrCodeScanner" component={QrCodeScanner} />

@@ -1,12 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { HomeNestedStack } from "../../../screens/Home";
-import {
-  FlatList,
-  Text,
-  TouchableOpacity,
-  View,
-  ViewStyle,
-} from "react-native";
+import { FlatList, Text, TouchableOpacity, View, ViewStyle } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ParticleView from "../../animations/Particles";
 import tw from "twrnc";
@@ -19,24 +13,16 @@ import Button from "../../design/Button";
 import { pushToast } from "../../../lib/utils";
 import Separator from "../../design/Separator";
 
-type PoolSettingsNavigationProps = NativeStackScreenProps<
-  HomeNestedStack,
-  "PoolSettings"
->;
-const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({
-  navigation,
-}) => {
+type PoolSettingsNavigationProps = NativeStackScreenProps<HomeNestedStack, "PoolSettings">;
+const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({ navigation }) => {
   const { pools, setPool, leavePool } = useContext(PoolContext);
 
   return (
     <SafeAreaProvider>
       <ParticleView
         paticles_number={5}
-        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-      >
-        <View
-          style={tw`w-3/4 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}
-        >
+        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}>
+        <View style={tw`w-3/4 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}>
           <View style={tw`flex flex-row justify-center items-center gap-x-1`}>
             <AntDesign
               name="setting"
@@ -44,9 +30,7 @@ const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({
               color="black"
               style={{ transform: [{ translateY: 3 }] } as ViewStyle}
             />
-            <Text
-              style={tw`text-center text-xl text-[${ColorScheme.TEXT}] mt-1`}
-            >
+            <Text style={tw`text-center text-xl text-[${ColorScheme.TEXT}] mt-1`}>
               Pools settings
             </Text>
           </View>
@@ -66,21 +50,17 @@ const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({
                       return pushToast(`Failed to switch pool`);
 
                     const { succeed } = await setPool(index);
-                    if (succeed)
-                      pushToast(`Current pool set to: ${item.pool_name}`);
+                    if (succeed) pushToast(`Current pool set to: ${item.pool_name}`);
                     else pushToast(`Failed to switch pool`);
                   }}
                   Leave={async () => {
-                    if (leavePool === undefined)
-                      return pushToast(`Failed to leave pool`);
+                    if (leavePool === undefined) return pushToast(`Failed to leave pool`);
 
                     const { succeed } = await leavePool(index);
                     if (succeed) pushToast("Pool left successfully");
                     else pushToast(`Failed to leave pool`);
                   }}
-                  openQrcode={() =>
-                    navigation.push("JoinLink", { pool: { ...item } })
-                  }
+                  openQrcode={() => navigation.push("JoinLink", { pool: { ...item } })}
                 />
               )}
             />
@@ -99,13 +79,7 @@ type PoolProps = {
   Leave: () => void;
   openQrcode: () => void;
 };
-const Pool: React.FC<PoolProps> = ({
-  pool_data,
-  is_current,
-  Switch,
-  Leave,
-  openQrcode,
-}) => {
+const Pool: React.FC<PoolProps> = ({ pool_data, is_current, Switch, Leave, openQrcode }) => {
   return (
     <View style={tw`flex flex-row gap-x-1 items-center mb-2 mx-2`}>
       <Button
@@ -115,28 +89,24 @@ const Pool: React.FC<PoolProps> = ({
           onPress: !is_current ? Switch : undefined,
         }}
         childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white font-semibold`}
-        childProps={{ selectable: true }}
-      >
+        childProps={{ selectable: true }}>
         {is_current && <Text style={tw`italic text-amber-400`}>{">>> "}</Text>}
         <Text
           style={{
             fontFamily: "monospace",
-          }}
-        >
+          }}>
           {pool_data.pool_name}
         </Text>
         {is_current && <Text style={tw`italic text-amber-400`}>{" <<<"}</Text>}
       </Button>
       <TouchableOpacity
         onPress={Leave}
-        style={tw`bg-white w-10 h-10 shadow-sm rounded border-2 border-black flex justify-center items-center`}
-      >
+        style={tw`bg-white w-10 h-10 shadow-sm rounded border-2 border-black flex justify-center items-center`}>
         <AntDesign name="minussquare" size={20} color="black" />
       </TouchableOpacity>
       <TouchableOpacity
         style={tw`bg-white w-10 h-10 shadow-sm rounded border-2 border-black flex justify-center items-center`}
-        onPress={openQrcode}
-      >
+        onPress={openQrcode}>
         <AntDesign name="qrcode" size={20} color="black" />
       </TouchableOpacity>
     </View>

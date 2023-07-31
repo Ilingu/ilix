@@ -27,7 +27,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
     const reader = new FileReader();
     reader.onloadend = () => {
       const fileB64 = reader.result?.toString();
-      if (!fileB64) return rej();
+      if (!fileB64) return rej(new Error("failed to convert"));
       resolve(fileB64);
     };
     reader.onerror = rej;
@@ -35,10 +35,10 @@ export function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-export const IsCodeOk = (code: string): boolean => code.split("-").length == 20;
+export const IsCodeOk = (code: string): boolean => code.split("-").length === 20;
 
 export const range = (from: number, to: number): number[] => {
-  if (from == to) return [from];
+  if (from === to) return [from];
 
   const rev = from > to;
   if (rev) [from, to] = [to, from];
@@ -58,5 +58,4 @@ export const range = (from: number, to: number): number[] => {
  * @returns On web, this returns a promise that fulfills to a boolean value indicating whether or not
  * the string was saved to the user's clipboard. On iOS and Android, the promise always resolves to `true`.
  */
-export const copyToClipboard = async (text: string) =>
-  await Clipboard.setStringAsync(text);
+export const copyToClipboard = async (text: string) => await Clipboard.setStringAsync(text);

@@ -1,25 +1,14 @@
 import { AuthShape } from "../Context/Auth";
 import type { PoolCtxShape } from "../Context/Pool";
 import { TransfersCtx } from "../Context/Transfer";
-import type {
-  FilePoolTransfer,
-  FunctionResult,
-  StoredDevicesPool,
-} from "../types/interfaces";
-import {
-  MakeKeyPhraseKey,
-  SS_Get,
-  SS_Store,
-  SS_clear,
-} from "../db/SecureStore";
+import type { FilePoolTransfer, FunctionResult, StoredDevicesPool } from "../types/interfaces";
+import { MakeKeyPhraseKey, SS_Get, SS_Store, SS_clear } from "../db/SecureStore";
 import { useEffect, useRef, useState } from "react";
 import { GetStoredAuthState } from "../db/Auth";
 import { AS_Clear, AS_Store, POOL_KEY } from "../db/AsyncStorage";
 import ApiClient from "../ApiClient";
 import { IsCodeOk, ToastDuration, pushToast } from "../utils";
 import { GetStoredPools } from "../db/Pools";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import type { RootStackParamList } from "../../App";
 
 interface AppStateShape {
   authState: AuthShape;
@@ -83,9 +72,7 @@ const useAppState = (): AppStateShape => {
       const poolState = poolStateRef.current;
       return (device_id ?? authState.device_id) === undefined
         ? undefined
-        : poolState.pools?.current.devices_id_to_name[
-            (device_id ?? authState.device_id) as string
-          ];
+        : poolState.pools?.current.devices_id_to_name[(device_id ?? authState.device_id) as string];
     };
 
     const logOut = async () => {
@@ -135,12 +122,8 @@ const useAppState = (): AppStateShape => {
       return await SS_Store(MakeKeyPhraseKey(pool_key_phrase), pool_key_phrase);
     };
 
-    const setPoolKeyPhrase = async (
-      SS_key_hashed_kp: string
-    ): Promise<FunctionResult> => {
-      const { succeed, data: new_key_phrase } = await SS_Get<string>(
-        SS_key_hashed_kp
-      );
+    const setPoolKeyPhrase = async (SS_key_hashed_kp: string): Promise<FunctionResult> => {
+      const { succeed, data: new_key_phrase } = await SS_Get<string>(SS_key_hashed_kp);
       if (!succeed) return { succeed: false };
 
       setAuthState((prev) => ({
@@ -167,11 +150,7 @@ const useAppState = (): AppStateShape => {
 
       if (isFirstLoad) lastPoolLoadingState.current = true;
       (isFirstLoad ? setAuthInitialState : setPoolKeyPhrase)(poolKp);
-    }, [
-      poolState.loading,
-      poolState.pools?.current_index,
-      poolState.cascading_update,
-    ]);
+    }, [poolState.loading, poolState.pools?.current_index, poolState.cascading_update]);
   }
   //#endregion
 
@@ -242,15 +221,13 @@ const useAppState = (): AppStateShape => {
       const curState = { ...poolStateRef.current };
       const curPool = { ...curState.pools?.current };
 
-      if (new_pool === undefined)
-        curState.pools?.pools?.splice(index, 1); // delete
+      if (new_pool === undefined) curState.pools?.pools?.splice(index, 1); // delete
       else curState.pools?.pools?.splice(index, 1, new_pool); // replace
 
       const next_index =
         new_pool === undefined
           ? curState.pools?.pools.findIndex(
-              ({ SS_key_hashed_kp }) =>
-                curPool?.SS_key_hashed_kp === SS_key_hashed_kp
+              ({ SS_key_hashed_kp }) => curPool?.SS_key_hashed_kp === SS_key_hashed_kp
             ) ?? 0
           : curState.pools?.current_index;
       if (next_index === undefined) return { succeed: false };
@@ -258,8 +235,7 @@ const useAppState = (): AppStateShape => {
       const newState: PoolCtxShape = {
         ...curState,
         pools:
-          curState.pools?.pools === undefined ||
-          curState.pools?.pools.length <= 0
+          curState.pools?.pools === undefined || curState.pools?.pools.length <= 0
             ? undefined
             : {
                 current_index: next_index,
@@ -297,15 +273,13 @@ const useAppState = (): AppStateShape => {
         );
         if (!leave_ok) return { succeed: false };
 
-        authStateRef.current.logOut && authStateRef.current.logOut();
+        authStateRef.current.logOut?.();
         return { succeed: true };
       }
 
       if (poolState.pools?.current_index === pool_index) {
         // switch before delete
-        const next_index = poolState.pools?.pools.findIndex(
-          (_, i) => i !== pool_index
-        );
+        const next_index = poolState.pools?.pools.findIndex((_, i) => i !== pool_index);
 
         if (next_index === undefined) return { succeed: false };
         const { succeed } = await setPool(next_index);
@@ -315,11 +289,8 @@ const useAppState = (): AppStateShape => {
       const pool = poolState.pools?.pools[pool_index];
       if (pool === undefined) return { succeed: false };
 
-      const { succeed, data: pool_key_phrase } = await SS_Get<string>(
-        pool.SS_key_hashed_kp
-      );
-      if (!succeed || typeof pool_key_phrase !== "string")
-        return { succeed: false };
+      const { succeed, data: pool_key_phrase } = await SS_Get<string>(pool.SS_key_hashed_kp);
+      if (!succeed || typeof pool_key_phrase !== "string") return { succeed: false };
 
       const { succeed: leave_ok } = await ApiClient.delete(
         "/pool/{pool_kp}/leave",
@@ -340,10 +311,7 @@ const useAppState = (): AppStateShape => {
     3. this function is called to refresh the pool data
     so all the currently loaded datas correspond to the pool to refresh 
     */
-      if (
-        typeof authState.pool_key_phrase !== "string" ||
-        !IsCodeOk(authState.pool_key_phrase)
-      )
+      if (typeof authState.pool_key_phrase !== "string" || !IsCodeOk(authState.pool_key_phrase))
         return;
 
       const { succeed, data, reason } = await ApiClient.get(
@@ -354,24 +322,13 @@ const useAppState = (): AppStateShape => {
         undefined
       );
 
-      if (
-        !succeed &&
-        reason === "PoolNotFound" &&
-        authStateRef.current.logOut
-      ) {
-        pushToast(
-          "This pool no longer exists, logging out...",
-          ToastDuration.LONG
-        );
+      if (!succeed && reason === "PoolNotFound" && authStateRef.current.logOut) {
+        pushToast("This pool no longer exists, logging out...", ToastDuration.LONG);
         return await authStateRef.current.logOut();
       }
 
       if (!succeed || !data) return;
-      if (
-        !("pool_name" in data) ||
-        !("devices_id" in data) ||
-        !("devices_id_to_name" in data)
-      )
+      if (!("pool_name" in data) || !("devices_id" in data) || !("devices_id_to_name" in data))
         return;
 
       const index = poolState.pools?.current_index;
@@ -398,9 +355,7 @@ const useAppState = (): AppStateShape => {
 
   //#region : Transfer Hook
   {
-    const fecthTransfers = async (): Promise<
-      FunctionResult<FilePoolTransfer[]>
-    > => {
+    const fecthTransfers = async (): Promise<FunctionResult<FilePoolTransfer[]>> => {
       const authStateCopy = { ...authState };
       if (
         authStateCopy.loading ||
@@ -417,19 +372,14 @@ const useAppState = (): AppStateShape => {
         },
         undefined
       );
-      if (!succeed || data === undefined || data.length === 0)
-        return { succeed: false, reason };
-      if (
-        !data.every(
-          (d) => "_id" in d && "to" in d && "from" in d && "files_id" in d
-        )
-      )
+      if (!succeed || data === undefined || data.length === 0) return { succeed: false, reason };
+      if (!data.every((d) => "_id" in d && "to" in d && "from" in d && "files_id" in d))
         return { succeed: false, reason: "Corrupted datas" };
       return { succeed: true, data };
     };
 
     const refresh = async () => {
-      setTransferState([true, null, [], refresh]);
+      setTransferState((prev) => [true, null, prev[2], refresh]);
 
       const { succeed, data } = await fecthTransfers();
       const realSuccess = succeed && data !== undefined && data.length > 0;

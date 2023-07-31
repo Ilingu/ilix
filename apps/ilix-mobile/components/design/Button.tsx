@@ -28,8 +28,7 @@ const Button: React.FC<ButtonViewProps> = ({
       style={{
         ...tw`text-base shadow-sm rounded-lg h-10 text-center pt-2`,
         ...childStyle,
-      }}
-    >
+      }}>
       {children}
     </Text>
   </TouchableOpacity>

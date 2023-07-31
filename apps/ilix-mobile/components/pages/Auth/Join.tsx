@@ -1,15 +1,10 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useRef, useState } from "react";
 
 // datas
 import PoolContext from "../../../lib/Context/Pool";
 import AuthContext from "../../../lib/Context/Auth";
 import ApiClient from "../../../lib/ApiClient";
-import {
-  IsCodeOk,
-  IsEmptyString,
-  ToastDuration,
-  pushToast,
-} from "../../../lib/utils";
+import { IsCodeOk, IsEmptyString, ToastDuration, pushToast } from "../../../lib/utils";
 import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
 
 // ui
@@ -42,7 +37,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useFocusEffect } from "@react-navigation/native";
 
-const { width: _, height: ScreenHeight } = Dimensions.get("window");
+const { height: ScreenHeight } = Dimensions.get("window");
 
 const JoinHomeCenterYPos = ScreenHeight / 2 - (289.9 - 28) / 2;
 const QrCodeCenterYPos = ScreenHeight / 2 - 335 / 4 + 2;
@@ -100,24 +95,14 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
       );
 
       if (!getSuccess || !PoolData)
-        return pushToast(
-          reason ?? "Couldn't retrieve pool datas, try again",
-          ToastDuration.LONG
-        );
+        return pushToast(reason ?? "Couldn't retrieve pool datas, try again", ToastDuration.LONG);
 
       data = PoolData;
     }
 
-    const err_msg = `Failed to join pool: ${
-      reason ?? "error reason not specified"
-    }`;
-    if ((!succeed && reason !== "AlreadyInPool") || !data)
-      return pushToast(err_msg);
-    if (
-      !("pool_name" in data) ||
-      !("devices_id" in data) ||
-      !("devices_id_to_name" in data)
-    )
+    const err_msg = `Failed to join pool: ${reason ?? "error reason not specified"}`;
+    if ((!succeed && reason !== "AlreadyInPool") || !data) return pushToast(err_msg);
+    if (!("pool_name" in data) || !("devices_id" in data) || !("devices_id_to_name" in data))
       return pushToast(err_msg);
 
     // store datas client-side
@@ -134,8 +119,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
         )
       : { succeed: false };
 
-    if (!kpSucceed || !poolSucceed)
-      return pushToast("Failed to store data client-side, try again");
+    if (!kpSucceed || !poolSucceed) return pushToast("Failed to store data client-side, try again");
 
     // reset
     setDeviceName("");
@@ -152,29 +136,22 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
       <ParticleView
         paticles_number={5}
         panResponder={panResponder}
-        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-      >
+        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}>
         <SlideInView
           duration={500}
           from={{ top: JoinHomeCenterYPos }}
           to={{ top: -400 }}
           state={posState === "JoinHome" ? "backward" : "forward"}
-          style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
-        >
+          style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}>
           <Image
             source={require("../../../assets/Images/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
           />
-          <Text
-            style={tw`text-2xl text-center font-bold mb-8 text-[${ColorScheme.TEXT}]`}
-          >
-            Join an <Text style={{ color: ColorScheme.PRIMARY }}>Ilix</Text>{" "}
-            Pool
+          <Text style={tw`text-2xl text-center font-bold mb-8 text-[${ColorScheme.TEXT}]`}>
+            Join an <Text style={{ color: ColorScheme.PRIMARY }}>Ilix</Text> Pool
           </Text>
           <View style={tw`px-3`}>
-            <Text style={tw`font-bold text-[${ColorScheme.TEXT}] ml-2`}>
-              Device Name
-            </Text>
+            <Text style={tw`font-bold text-[${ColorScheme.TEXT}] ml-2`}>Device Name</Text>
             <TextInput
               placeholder="Goon 👻"
               value={DeviceName}
@@ -185,18 +162,15 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
 
             <Button
               parentProps={{ onPress: () => setPosState("QrCode") }}
-              childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
-            >
-              <FontAwesome5 name="qrcode" size={16} color="white" /> Scan or
-              enter sync code
+              childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}>
+              <FontAwesome5 name="qrcode" size={16} color="white" /> Scan or enter sync code
             </Button>
 
             {IsArgsOk() && (
               <FadeInView duration={500}>
                 <Button
                   parentProps={{ onPress: SubmitJoinReq }}
-                  childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
-                >
+                  childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}>
                   <AntDesign name="login" size={16} color="white" /> Sign In
                 </Button>
               </FadeInView>
@@ -204,9 +178,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
 
             <View style={tw`flex flex-row items-center mt-2 ml-1`}>
               <TouchableOpacity onPress={() => navigation.navigate("NewPool")}>
-                <Text
-                  style={tw`italic text-xs text-[${ColorScheme.PRIMARY}] underline`}
-                >
+                <Text style={tw`italic text-xs text-[${ColorScheme.PRIMARY}] underline`}>
                   Or create a new pool
                 </Text>
               </TouchableOpacity>
@@ -219,8 +191,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
           from={{ top: 950 }}
           to={{ top: QrCodeCenterYPos }}
           state={posState === "JoinHome" ? "backward" : "forward"}
-          style={tw`w-3/4 p-4 border-2 border-black bg-white rounded-xl z-10`}
-        >
+          style={tw`w-3/4 p-4 border-2 border-black bg-white rounded-xl z-10`}>
           <QrCodeHandler
             SyncCode={SyncCode}
             setSyncCode={setSyncCode}
@@ -252,14 +223,11 @@ const QrCodeHandler: React.FC<QrProps> = ({
   <>
     <Button
       parentProps={{ onPress: qrScan }}
-      childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}
-    >
+      childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-5 mt-2`}>
       <FontAwesome5 name="qrcode" size={16} color="white" /> Scan Qr Code
     </Button>
 
-    <Text style={{ color: ColorScheme.PRIMARY_CONTENT }}>
-      Or enter sync code manually
-    </Text>
+    <Text style={{ color: ColorScheme.PRIMARY_CONTENT }}>Or enter sync code manually</Text>
     <TextInput
       placeholder="20 words sync code"
       value={SyncCode}
@@ -271,16 +239,14 @@ const QrCodeHandler: React.FC<QrProps> = ({
       <FadeInView duration={500}>
         <Button
           parentProps={{ onPress: back }}
-          childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
-        >
+          childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}>
           <FontAwesome5 name="save" size={16} color="white" /> Save
         </Button>
       </FadeInView>
     ) : (
       <Button
         parentProps={{ onPress: back }}
-        childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}
-      >
+        childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mt-2`}>
         <FontAwesome5 name="backward" size={16} color="white" /> Back
       </Button>
     )}

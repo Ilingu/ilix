@@ -8,10 +8,7 @@ export interface AuthShape {
   pool_key_phrase?: string;
   device_id?: string;
   get device_name(): string | undefined;
-  addPoolKeyPhrase?: (
-    pool_key_phrase: string,
-    with_CC_update?: boolean
-  ) => Promise<FunctionResult>;
+  addPoolKeyPhrase?: (pool_key_phrase: string, with_CC_update?: boolean) => Promise<FunctionResult>;
   setPoolKeyPhrase?: (hashed_kp: string) => Promise<FunctionResult>;
   logOut?: () => Promise<void>;
 }

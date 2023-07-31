@@ -16,23 +16,14 @@ export default function Splash({ navigation }: NavigationProps) {
   // Always listen to changes in auth, e.g: if user logout it'll automatically redirect him to the "Auth" page
   useEffect(() => {
     if (!AuthState.loading && !PoolState.loading) {
-      if (AuthState.logged_in && PoolState.pools !== undefined)
-        navigation.navigate("Home");
+      if (AuthState.logged_in && PoolState.pools !== undefined) navigation.navigate("Home");
       else navigation.navigate("Auth");
     }
-  }, [
-    AuthState.loading,
-    PoolState.loading,
-    AuthState.logged_in,
-    PoolState.pools,
-  ]);
+  }, [AuthState.loading, PoolState.loading, AuthState.logged_in, PoolState.pools]);
 
   return (
     <SafeAreaProvider>
-      <Image
-        source={require("../assets/Images/splash.png")}
-        style={tw`w-full h-full`}
-      />
+      <Image source={require("../assets/Images/splash.png")} style={tw`w-full h-full`} />
       <StatusBar style="light" backgroundColor="black" />
     </SafeAreaProvider>
   );

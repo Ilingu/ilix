@@ -18,10 +18,9 @@ type GetPath<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   : T extends "/file-transfer/{pool_kp}/{device_id}/all"
   ? { pool_kp: string; device_id: string }
   : undefined;
-type GetQuery<T extends GetRoutes> =
-  T extends "/files/info?files_ids={files_ids}"
-    ? { files_ids: string[] }
-    : undefined;
+type GetQuery<T extends GetRoutes> = T extends "/files/info?files_ids={files_ids}"
+  ? { files_ids: string[] }
+  : undefined;
 type GetReturns<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   ? DevicesPool
   : T extends "/file-transfer/{pool_kp}/{device_id}/all"
@@ -31,17 +30,13 @@ type GetReturns<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   : never;
 
 // Post
-type PostRoutes =
-  | "/pool/new"
-  | "/file-transfer/{pool_kp}/new?from={from}&to={to}";
-type PostPath<T extends PostRoutes> =
-  T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
-    ? { pool_kp: string }
-    : undefined;
-type PostQuery<T extends PostRoutes> =
-  T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
-    ? { from: string; to: string }
-    : undefined;
+type PostRoutes = "/pool/new" | "/file-transfer/{pool_kp}/new?from={from}&to={to}";
+type PostPath<T extends PostRoutes> = T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
+  ? { pool_kp: string }
+  : undefined;
+type PostQuery<T extends PostRoutes> = T extends "/file-transfer/{pool_kp}/new?from={from}&to={to}"
+  ? { from: string; to: string }
+  : undefined;
 type PostBody<T extends PostRoutes> = T extends "/pool/new"
   ? {
       name: string;
@@ -66,9 +61,7 @@ type PutBody<T extends PutRoutes> = T extends "/pool/{pool_kp}/join"
       device_name: string;
     }
   : undefined;
-type PutReturns<T extends PutRoutes> = T extends "/pool/{pool_kp}/join"
-  ? DevicesPool
-  : never;
+type PutReturns<T extends PutRoutes> = T extends "/pool/{pool_kp}/join" ? DevicesPool : never;
 
 // Delete
 type DeleteRoutes =
@@ -76,9 +69,7 @@ type DeleteRoutes =
   | "/pool/{pool_kp}/leave"
   | "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
   | "/file/{file_id}";
-type DeletePath<T extends DeleteRoutes> = T extends
-  | "/pool/{pool_kp}"
-  | "/pool/{pool_kp}/leave"
+type DeletePath<T extends DeleteRoutes> = T extends "/pool/{pool_kp}" | "/pool/{pool_kp}/leave"
   ? { pool_kp: string }
   : T extends "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
   ? { pool_kp: string; device_id: string; transfer_id: string }
@@ -99,9 +90,7 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
   : never;
 
 const SERVER_BASE_URL =
-  process.env.NODE_ENV === "development"
-    ? "https://b210-193-32-126-212.ngrok-free.app"
-    : "";
+  process.env.NODE_ENV === "development" ? "https://589d-193-32-126-236.ngrok-free.app" : "";
 
 export default class ApiClient {
   public static async get<T extends GetRoutes>(
@@ -165,10 +154,8 @@ export const HandleGetFilesAndSave = async (
   files_to_download: [string, string][],
   key_phrase: string
 ): Promise<FunctionResult> => {
-  const permissions =
-    await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-  if (!permissions.granted)
-    return { succeed: false, reason: "permission not granted" };
+  const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+  if (!permissions.granted) return { succeed: false, reason: "permission not granted" };
 
   try {
     const download_iter = files_to_download.map(
@@ -176,8 +163,7 @@ export const HandleGetFilesAndSave = async (
         /* Download File from api */
         const call_url = `${SERVER_BASE_URL}/file/${file_id}?key_phrase=${key_phrase}`;
         const resp = await fetch(call_url);
-        if (!resp.ok)
-          return { succeed: false, reason: "server failed to fetch file" };
+        if (!resp.ok) return { succeed: false, reason: "server failed to fetch file" };
 
         const fileBlob = await resp.blob();
         const base64File = await blobToBase64(fileBlob);
@@ -192,13 +178,9 @@ export const HandleGetFilesAndSave = async (
           filename.replace(/^\/+|\/+$/g, "").split(".")[0],
           mimeType
         );
-        await FileSystem.writeAsStringAsync(
-          uri,
-          base64File.split("base64,")[1],
-          {
-            encoding: FileSystem.EncodingType.Base64,
-          }
-        );
+        await FileSystem.writeAsStringAsync(uri, base64File.split("base64,")[1], {
+          encoding: FileSystem.EncodingType.Base64,
+        });
 
         return { succeed: true };
       }
@@ -234,7 +216,7 @@ const HandleRequest = async <T = never>(
     let respBody: ServerResponse<string>;
     try {
       respBody = await resp.json();
-    } catch (err) {
+    } catch {
       return { succeed: is_no_body_ok, reason: "failed to parse body" };
     }
 
@@ -248,7 +230,7 @@ const HandleRequest = async <T = never>(
     if ("data" in respBody && typeof respBody.data === "string") {
       try {
         parsedData = JSON.parse(respBody.data);
-      } catch (_) {
+      } catch {
         return {
           succeed: is_no_data_ok,
           reason: respBody.reason ?? "failed to parse data",

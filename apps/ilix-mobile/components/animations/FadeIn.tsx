@@ -5,11 +5,7 @@ type FadeInViewProps = PropsWithChildren<{
   style?: ViewStyle;
   duration: number;
 }>;
-const FadeInView: React.FC<FadeInViewProps> = ({
-  style,
-  duration,
-  children,
-}) => {
+const FadeInView: React.FC<FadeInViewProps> = ({ style, duration, children }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current; // Initial value for opacity: 0
 
   useEffect(() => {
@@ -25,8 +21,7 @@ const FadeInView: React.FC<FadeInViewProps> = ({
       style={{
         ...style,
         opacity: fadeAnim, // Bind opacity to animated value
-      }}
-    >
+      }}>
       {children}
     </Animated.View>
   );

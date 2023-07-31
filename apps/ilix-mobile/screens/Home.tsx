@@ -1,6 +1,8 @@
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import {
+  createNativeStackNavigator,
+  type NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../App";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import usePreventNav from "../lib/hooks/PreventNav";
 import HomeDefault from "../components/pages/Home/default";
 import Inbox from "../components/pages/Home/Inbox/Inbox";
@@ -10,10 +12,7 @@ import PoolContext from "../lib/Context/Pool";
 import { CommonActions } from "@react-navigation/native";
 import PoolSettings from "../components/pages/Home/PoolSettings";
 import SendTransfer from "../components/pages/Home/Send/Send";
-import type {
-  FilePoolTransfer,
-  StoredDevicesPool,
-} from "../lib/types/interfaces";
+import type { StoredDevicesPool } from "../lib/types/interfaces";
 import JoinLink from "../components/pages/Home/JoinLink";
 import { StatusBar } from "expo-status-bar";
 import ViewTransfer from "../components/pages/Home/Inbox/ViewTransfer";
@@ -32,19 +31,14 @@ export type HomeNestedStack = {
 };
 const { Screen, Navigator } = createNativeStackNavigator<HomeNestedStack>();
 
-export type HomeNavigationProps = NativeStackScreenProps<
-  RootStackParamList,
-  "Home"
->;
+export type HomeNavigationProps = NativeStackScreenProps<RootStackParamList, "Home">;
 export default function Home({ navigation }: HomeNavigationProps) {
   const { pools } = useContext(PoolContext);
-  usePreventNav(navigation, true);
+  usePreventNav(navigation, true, true);
 
   const openAddPool = () => navigation.navigate("Auth", { preventNav: false });
-  const goHome = () =>
-    navigation.dispatch(CommonActions.navigate({ name: "default" }));
-  const switchPool = () =>
-    navigation.dispatch(CommonActions.navigate({ name: "PoolSettings" }));
+  const goHome = () => navigation.dispatch(CommonActions.navigate({ name: "default" }));
+  const switchPool = () => navigation.dispatch(CommonActions.navigate({ name: "PoolSettings" }));
 
   useEffect(() => {
     navigation.setOptions({
@@ -63,8 +57,7 @@ export default function Home({ navigation }: HomeNavigationProps) {
     <>
       <Navigator
         initialRouteName="default"
-        screenOptions={{ headerShown: false, animation: "slide_from_right" }}
-      >
+        screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
         <Screen name="default" component={HomeDefault} />
         <Screen name="inbox" component={Inbox} />
         <Screen name="send" component={SendTransfer} />

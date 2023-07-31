@@ -12,10 +12,7 @@ export interface PoolCtxShape {
   pools?: StoredPools;
   loading: boolean;
   cascading_update: boolean;
-  addPool?: (
-    pool: StoredDevicesPool,
-    with_CC_update?: boolean
-  ) => Promise<FunctionResult>;
+  addPool?: (pool: StoredDevicesPool, with_CC_update?: boolean) => Promise<FunctionResult>;
   setPool?: (new_index: number) => Promise<FunctionResult>;
   leavePool?: (pool_index: number) => Promise<FunctionResult>;
 }

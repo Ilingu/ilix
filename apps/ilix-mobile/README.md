@@ -14,5 +14,4 @@ https://github.com/awesomejerry/react-native-qrcode-svg
 
 [REMAINING]:
 
-- Inbox transfer
 - Send transfer

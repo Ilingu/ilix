@@ -21,13 +21,8 @@ import AuthContext from "../../../lib/Context/Auth";
 import PoolContext from "../../../lib/Context/Pool";
 import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
 
-type NewPoolNavigationProps = NativeStackScreenProps<
-  AuthNestedStack,
-  "NewPool"
->;
-const NewPool: React.FC<NewPoolNavigationProps> = ({
-  navigation,
-}: NewPoolNavigationProps) => {
+type NewPoolNavigationProps = NativeStackScreenProps<AuthNestedStack, "NewPool">;
+const NewPool: React.FC<NewPoolNavigationProps> = ({ navigation }: NewPoolNavigationProps) => {
   const { device_id, addPoolKeyPhrase } = useContext(AuthContext);
   const { addPool } = useContext(PoolContext);
 
@@ -48,11 +43,8 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
       device_name: DeviceNameCopy,
       name: PoolNameCopy,
     });
-    const err_msg = `Failed to join pool: ${
-      reason ?? "error reason not specified"
-    }`;
-    if (!succeed || !pool_kp || IsEmptyString(pool_kp))
-      return pushToast(err_msg);
+    const err_msg = `Failed to join pool: ${reason ?? "error reason not specified"}`;
+    if (!succeed || !pool_kp || IsEmptyString(pool_kp)) return pushToast(err_msg);
 
     // store datas client-side
     const { succeed: kpSucceed } = addPoolKeyPhrase
@@ -70,8 +62,7 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
         )
       : { succeed: false };
 
-    if (!kpSucceed || !poolSucceed)
-      return pushToast("Failed to store data client-side, try again");
+    if (!kpSucceed || !poolSucceed) return pushToast("Failed to store data client-side, try again");
 
     // reset
     setDeviceName("");
@@ -84,25 +75,17 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
     <SafeAreaProvider>
       <ParticleView
         style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-        paticles_number={5}
-      >
-        <View
-          style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
-        >
+        paticles_number={5}>
+        <View style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}>
           <Image
             source={require("../../../assets/Images/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
           />
-          <Text
-            style={tw`text-2xl text-center font-bold mb-2 pr-3 text-[${ColorScheme.TEXT}]`}
-          >
-            Create New <Text style={{ color: ColorScheme.PRIMARY }}>Ilix</Text>{" "}
-            Pool
+          <Text style={tw`text-2xl text-center font-bold mb-2 pr-3 text-[${ColorScheme.TEXT}]`}>
+            Create New <Text style={{ color: ColorScheme.PRIMARY }}>Ilix</Text> Pool
           </Text>
           <View style={tw`px-3`}>
-            <Text style={tw`font-bold text-[${ColorScheme.TEXT}] ml-2`}>
-              Device Name
-            </Text>
+            <Text style={tw`font-bold text-[${ColorScheme.TEXT}] ml-2`}>Device Name</Text>
             <TextInput
               placeholder="Goon 👻"
               value={DeviceName}
@@ -111,9 +94,7 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
               style={tw`border-2 border-black rounded-lg w-full h-10 text-center`}
             />
 
-            <Text style={tw`font-bold text-[${ColorScheme.TEXT}] ml-2`}>
-              Pool Name
-            </Text>
+            <Text style={tw`font-bold text-[${ColorScheme.TEXT}] ml-2`}>Pool Name</Text>
             <TextInput
               placeholder="Cats pics exchange 🐈"
               value={PoolName}
@@ -124,13 +105,8 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
             {IsArgsOk() && (
               <Button
                 childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white my-2`}
-                parentProps={{ onPress: SubmitNewPool }}
-              >
-                <FontAwesome5
-                  name="lock"
-                  size={16}
-                  color={ColorScheme.SECONDARY}
-                />
+                parentProps={{ onPress: SubmitNewPool }}>
+                <FontAwesome5 name="lock" size={16} color={ColorScheme.SECONDARY} />
                 {"  "}
                 Create Pool
               </Button>

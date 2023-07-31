@@ -102,18 +102,10 @@ const SlideInView: React.FC<SlideInViewProps> = ({
         ...style,
         position: "absolute",
         top: from.top === undefined || to.top === undefined ? undefined : top,
-        bottom:
-          from.bottom === undefined || to.bottom === undefined
-            ? undefined
-            : bottom,
-        right:
-          from.right === undefined || to.right === undefined
-            ? undefined
-            : right,
-        left:
-          from.left === undefined || to.left === undefined ? undefined : left,
-      }}
-    >
+        bottom: from.bottom === undefined || to.bottom === undefined ? undefined : bottom,
+        right: from.right === undefined || to.right === undefined ? undefined : right,
+        left: from.left === undefined || to.left === undefined ? undefined : left,
+      }}>
       {children}
     </Animated.View>
   );

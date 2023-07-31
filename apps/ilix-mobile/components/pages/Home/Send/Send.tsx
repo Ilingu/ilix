@@ -21,21 +21,16 @@ const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {
     <SafeAreaProvider>
       <ParticleView
         paticles_number={5}
-        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-      >
-        <View
-          style={tw`w-3/4 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}
-        >
+        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}>
+        <View style={tw`w-3/4 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}>
           <Text style={tw`text-center text-xl text-[${ColorScheme.TEXT}] mt-1`}>
-            <Ionicons name="send-outline" size={20} color="black" /> Send
-            Transfer
+            <Ionicons name="send-outline" size={20} color="black" /> Send Transfer
           </Text>
 
           <Separator />
 
           <View style={tw`max-h-60 overflow-hidden`}>
-            {pools?.current.devices_id_to_name === undefined ||
-            device_id === undefined ? (
+            {pools?.current.devices_id_to_name === undefined || device_id === undefined ? (
               <Text>Nobody there?</Text>
             ) : (
               <FlatList
@@ -45,8 +40,7 @@ const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {
                 renderItem={({ index, item: name }) => (
                   <View
                     key={index}
-                    style={tw`flex flex-row items-center gap-x-2 mx-2 p-2 border-2 border-black rounded-lg mb-2`}
-                  >
+                    style={tw`flex flex-row items-center gap-x-2 mx-2 p-2 border-2 border-black rounded-lg mb-2`}>
                     <ProfilePicture width={32} height={32} />
                     <Text style={tw`flex-1 font-semibold`}>{name}</Text>
                     <FontAwesome name="caret-right" size={24} color="black" />

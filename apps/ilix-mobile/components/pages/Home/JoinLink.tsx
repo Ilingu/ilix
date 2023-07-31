@@ -12,10 +12,7 @@ import { copyToClipboard, pushToast } from "../../../lib/utils";
 import QRCode from "react-native-qrcode-svg";
 import { usePreventScreenCapture } from "expo-screen-capture";
 
-type JoinLinkNavigationProps = NativeStackScreenProps<
-  HomeNestedStack,
-  "JoinLink"
->;
+type JoinLinkNavigationProps = NativeStackScreenProps<HomeNestedStack, "JoinLink">;
 const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
   usePreventScreenCapture();
   const pool = route.params.pool;
@@ -23,12 +20,8 @@ const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
   const [KeyPhrase, setKP] = useState<string | null>(null);
   useEffect(() => {
     (async () => {
-      const { succeed, data: pool_key_phrase } = await SS_Get<string>(
-        pool.SS_key_hashed_kp
-      );
-      setKP(
-        !succeed || typeof pool_key_phrase !== "string" ? null : pool_key_phrase
-      );
+      const { succeed, data: pool_key_phrase } = await SS_Get<string>(pool.SS_key_hashed_kp);
+      setKP(!succeed || typeof pool_key_phrase !== "string" ? null : pool_key_phrase);
     })();
   }, [pool]);
 
@@ -36,28 +29,21 @@ const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
     <SafeAreaProvider>
       <ParticleView
         paticles_number={5}
-        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}
-      >
-        <View
-          style={tw`w-5/6 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}
-        >
+        style={tw`flex-1 justify-center items-center bg-white bg-opacity-50`}>
+        <View style={tw`w-5/6 border-2 border-black rounded-xl bg-white z-10 overflow-hidden`}>
           <Text style={tw`text-center text-xl font-semibold`}>
-            How to join{" "}
-            <Text style={{ fontFamily: "monospace" }}>{pool.pool_name}</Text>?
+            How to join <Text style={{ fontFamily: "monospace" }}>{pool.pool_name}</Text>?
           </Text>
           <Text style={tw`font-bold text-red-800 mb-2 mx-2`}>
-            Treat this code like a password. If someone gets ahold of it, they
-            can read and modify all your datas.
+            Treat this code like a password. If someone gets ahold of it, they can read and modify
+            all your datas.
           </Text>
           {KeyPhrase !== null && (
             <FadeInView
               style={tw`m-2 border-2 border-gray-700 p-2 rounded-md bg-gray-100`}
-              duration={500}
-            >
+              duration={500}>
               <Text style={tw`italic`}>Scan the qr code...</Text>
-              <View
-                style={tw`border-2 border-gray-700 p-2 rounded-md mx-auto bg-white`}
-              >
+              <View style={tw`border-2 border-gray-700 p-2 rounded-md mx-auto bg-white`}>
                 <QRCode
                   value={KeyPhrase}
                   logo={require("../../../assets/Images/icon.png")}
@@ -75,8 +61,7 @@ const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
                   style={{
                     ...tw`font-bold text-white`,
                     fontFamily: "monospace",
-                  }}
-                >
+                  }}>
                   {KeyPhrase}
                 </Text>
               </View>
@@ -89,8 +74,7 @@ const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
                     await copyToClipboard(KeyPhrase);
                     pushToast("Copied!");
                   }}
-                  style={tw`bg-white w-7 h-7 shadow-sm rounded border-2 border-black flex justify-center items-center`}
-                >
+                  style={tw`bg-white w-7 h-7 shadow-sm rounded border-2 border-black flex justify-center items-center`}>
                   <AntDesign name="copy1" size={16} color="black" />
                 </TouchableOpacity>
               </View>
