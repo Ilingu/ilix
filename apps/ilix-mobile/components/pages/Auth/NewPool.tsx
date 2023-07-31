@@ -90,7 +90,7 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({
           style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
         >
           <Image
-            source={require("../../../assets/icon.png")}
+            source={require("../../../assets/Images/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
           />
           <Text

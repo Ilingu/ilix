@@ -60,7 +60,7 @@ const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
               >
                 <QRCode
                   value={KeyPhrase}
-                  logo={require("../../../assets/icon.png")}
+                  logo={require("../../../assets/Images/icon.png")}
                   backgroundColor="#ffffff"
                   logoBorderRadius={15}
                   logoBackgroundColor="#fff"

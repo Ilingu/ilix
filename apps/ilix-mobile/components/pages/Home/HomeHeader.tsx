@@ -19,7 +19,7 @@ export default function HomeHeader({
       <View style={tw`absolute left-0 -top-1.5 z-10`}>
         <TouchableOpacity onPress={goHome}>
           <Image
-            source={require("../../../assets/icon.png")}
+            source={require("../../../assets/Images/icon.png")}
             style={tw`w-[40px] h-[40px] rounded-lg border-[1px] border-white`}
           />
         </TouchableOpacity>

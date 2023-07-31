@@ -3,9 +3,11 @@ import type { FunctionResult } from "../types/interfaces";
 
 export const POOL_KEY = "device_pools";
 
-export const AS_Store = async (
+export const CACHE_KEY = (transfer_id: string) => `transfer-${transfer_id}`;
+
+export const AS_Store = async <T = any>(
   key: string,
-  value: any
+  value: T
 ): Promise<FunctionResult> => {
   try {
     await AsyncStorage.setItem(key, JSON.stringify(value));
@@ -26,6 +28,16 @@ export const AS_Get = async <T = never>(
 
     const parsedValue = JSON.parse(value);
     return { succeed: true, data: parsedValue };
+  } catch (e) {
+    return { succeed: false, reason: e as string };
+  }
+};
+export const AS_Delete = async (
+  key: string
+): Promise<FunctionResult<never>> => {
+  try {
+    await AsyncStorage.removeItem(key);
+    return { succeed: true };
   } catch (e) {
     return { succeed: false, reason: e as string };
   }

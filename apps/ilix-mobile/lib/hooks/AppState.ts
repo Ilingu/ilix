@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { GetStoredAuthState } from "../db/Auth";
 import { AS_Clear, AS_Store, POOL_KEY } from "../db/AsyncStorage";
 import ApiClient from "../ApiClient";
-import { IsCodeOk, pushToast } from "../utils";
+import { IsCodeOk, ToastDuration, pushToast } from "../utils";
 import { GetStoredPools } from "../db/Pools";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
@@ -55,6 +55,7 @@ const useAppState = (): AppStateShape => {
     false,
     null,
     [],
+    async () => {},
   ]);
   const transferStateRef = useRef(transferState);
   transferStateRef.current = transferState;
@@ -114,7 +115,7 @@ const useAppState = (): AppStateShape => {
         loading: false,
         pools: undefined,
       }));
-      setTransferState([false, null, []]);
+      setTransferState((prev) => [false, null, [], prev[3]]);
 
       pushToast("Successfully logged out");
     };
@@ -199,6 +200,11 @@ const useAppState = (): AppStateShape => {
           get current() {
             return this.pools[this.current_index];
           },
+          get currentName() {
+            return (device_id: string): string => {
+              return this.current.devices_id_to_name[device_id];
+            };
+          },
         },
         cascading_update: with_CC_update,
       };
@@ -216,6 +222,11 @@ const useAppState = (): AppStateShape => {
           pools: curState.pools?.pools ?? [],
           get current() {
             return this.pools[new_index];
+          },
+          get currentName() {
+            return (device_id: string): string => {
+              return this.current.devices_id_to_name[device_id];
+            };
           },
         },
         cascading_update: true,
@@ -255,6 +266,11 @@ const useAppState = (): AppStateShape => {
                 pools: curState.pools?.pools,
                 get current() {
                   return this.pools[this.current_index];
+                },
+                get currentName() {
+                  return (device_id: string): string => {
+                    return this.current.devices_id_to_name[device_id];
+                  };
                 },
               },
         cascading_update: true,
@@ -330,9 +346,25 @@ const useAppState = (): AppStateShape => {
       )
         return;
 
-      const { succeed, data } = await ApiClient.get("/pool/{pool_kp}", {
-        pool_kp: authState.pool_key_phrase,
-      });
+      const { succeed, data, reason } = await ApiClient.get(
+        "/pool/{pool_kp}",
+        {
+          pool_kp: authState.pool_key_phrase,
+        },
+        undefined
+      );
+
+      if (
+        !succeed &&
+        reason === "PoolNotFound" &&
+        authStateRef.current.logOut
+      ) {
+        pushToast(
+          "This pool no longer exists, logging out...",
+          ToastDuration.LONG
+        );
+        return await authStateRef.current.logOut();
+      }
 
       if (!succeed || !data) return;
       if (
@@ -382,7 +414,8 @@ const useAppState = (): AppStateShape => {
         {
           pool_kp: authStateCopy.pool_key_phrase,
           device_id: authStateCopy.device_id,
-        }
+        },
+        undefined
       );
       if (!succeed || data === undefined || data.length === 0)
         return { succeed: false, reason };
@@ -395,6 +428,16 @@ const useAppState = (): AppStateShape => {
       return { succeed: true, data };
     };
 
+    const refresh = async () => {
+      setTransferState([true, null, [], refresh]);
+
+      const { succeed, data } = await fecthTransfers();
+      const realSuccess = succeed && data !== undefined && data.length > 0;
+
+      if (realSuccess) setTransferState([false, true, data, refresh]);
+      else setTransferState([false, false, [], refresh]);
+    };
+
     useEffect(() => {
       if (
         authState.loading ||
@@ -402,16 +445,9 @@ const useAppState = (): AppStateShape => {
         authState.pool_key_phrase === undefined
       )
         return;
+
       // when "pool_key_phrase" is set for the 1st time, the pools are already loaded, if it isn't the 1st time it's a pool change
-      (async () => {
-        setTransferState([true, null, []]);
-
-        const { succeed, data } = await fecthTransfers();
-        const realSuccess = succeed && data !== undefined && data.length > 0;
-
-        if (realSuccess) setTransferState([false, true, data]);
-        else setTransferState([false, false, []]);
-      })();
+      refresh();
     }, [authState.pool_key_phrase, authState.loading]);
   }
   //#endregion

@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import type {
   DevicesPool,
+  FileInfo,
   FilePoolTransfer,
   FunctionResult,
   ServerResponse,
@@ -8,16 +9,25 @@ import type {
 import { blobToBase64 } from "./utils";
 
 // Get
-type GetRoutes = "/pool/{pool_kp}" | "/file-transfer/{pool_kp}/{device_id}/all";
+type GetRoutes =
+  | "/pool/{pool_kp}"
+  | "/file-transfer/{pool_kp}/{device_id}/all"
+  | "/files/info?files_ids={files_ids}";
 type GetPath<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   ? { pool_kp: string }
   : T extends "/file-transfer/{pool_kp}/{device_id}/all"
   ? { pool_kp: string; device_id: string }
-  : never;
+  : undefined;
+type GetQuery<T extends GetRoutes> =
+  T extends "/files/info?files_ids={files_ids}"
+    ? { files_ids: string[] }
+    : undefined;
 type GetReturns<T extends GetRoutes> = T extends "/pool/{pool_kp}"
   ? DevicesPool
   : T extends "/file-transfer/{pool_kp}/{device_id}/all"
   ? FilePoolTransfer[]
+  : T extends "/files/info?files_ids={files_ids}"
+  ? FileInfo[]
   : never;
 
 // Post
@@ -65,14 +75,14 @@ type DeleteRoutes =
   | "/pool/{pool_kp}"
   | "/pool/{pool_kp}/leave"
   | "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
-  | "/files/{file_id}";
+  | "/file/{file_id}";
 type DeletePath<T extends DeleteRoutes> = T extends
   | "/pool/{pool_kp}"
   | "/pool/{pool_kp}/leave"
   ? { pool_kp: string }
   : T extends "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
   ? { pool_kp: string; device_id: string; transfer_id: string }
-  : T extends "/files/{file_id}"
+  : T extends "/file/{file_id}"
   ? { file_id: string }
   : undefined;
 type DeleteBody<T extends DeleteRoutes> = T extends "/pool/{pool_kp}/leave"
@@ -84,25 +94,27 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
   | "/pool/{pool_kp}"
   | "/pool/{pool_kp}/leave"
   | "/file-transfer/{pool_kp}/{device_id}/{transfer_id}"
-  | "/files/{file_id}"
+  | "/file/{file_id}"
   ? null
   : never;
 
 const SERVER_BASE_URL =
   process.env.NODE_ENV === "development"
-    ? "https://79b2-146-70-184-100.ngrok-free.app"
+    ? "https://b210-193-32-126-212.ngrok-free.app"
     : "";
 
 export default class ApiClient {
   public static async get<T extends GetRoutes>(
     route: T,
-    path: GetPath<T>
+    path: GetPath<T>,
+    query: GetQuery<T>
   ): Promise<FunctionResult<GetReturns<T>>> {
     let built_uri = route as string;
     if (path) built_uri = build_uri(built_uri, path);
+    if (query) built_uri = build_uri(built_uri, query);
 
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
-    return await HandleRequest(call_url, "GET", undefined);
+    return await HandleRequest(call_url, "GET"); // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
   }
   public static async post<T extends PostRoutes>(
     route: T,
@@ -115,11 +127,7 @@ export default class ApiClient {
     if (query) built_uri = build_uri(built_uri, query);
 
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
-    return await HandleRequest(
-      call_url,
-      "POST",
-      body && JSON.stringify(body) // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
-    );
+    return await HandleRequest(call_url, "POST", body && JSON.stringify(body)); // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
   }
   public static async put<T extends PutRoutes>(
     route: T,
@@ -130,11 +138,7 @@ export default class ApiClient {
     if (path) built_uri = build_uri(built_uri, path);
 
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
-    return await HandleRequest(
-      call_url,
-      "PUT",
-      body && JSON.stringify(body) // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
-    );
+    return await HandleRequest(call_url, "PUT", body && JSON.stringify(body)); // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
   }
   public static async delete<T extends DeleteRoutes>(
     route: T,
@@ -157,9 +161,8 @@ export const AddFilesToTransfer = async (): Promise<FunctionResult> => {
   return { succeed: false, reason: "not implemented" };
 };
 
-export const HandleGetFileAndSave = async (
-  file_id: string,
-  filename: string,
+export const HandleGetFilesAndSave = async (
+  files_to_download: [string, string][],
   key_phrase: string
 ): Promise<FunctionResult> => {
   const permissions =
@@ -168,32 +171,42 @@ export const HandleGetFileAndSave = async (
     return { succeed: false, reason: "permission not granted" };
 
   try {
-    /* Download File from api */
-    const call_url = `${SERVER_BASE_URL}/files/${file_id}`;
-    const resp = await fetch(call_url, {
-      body: JSON.stringify({ key_phrase }),
-    });
-    if (!resp.ok)
-      return { succeed: false, reason: "server failed to fetch file" };
+    const download_iter = files_to_download.map(
+      async ([file_id, filename]): Promise<FunctionResult> => {
+        /* Download File from api */
+        const call_url = `${SERVER_BASE_URL}/file/${file_id}?key_phrase=${key_phrase}`;
+        const resp = await fetch(call_url);
+        if (!resp.ok)
+          return { succeed: false, reason: "server failed to fetch file" };
 
-    const fileBlob = await resp.blob();
-    const base64File = await blobToBase64(fileBlob);
+        const fileBlob = await resp.blob();
+        const base64File = await blobToBase64(fileBlob);
 
-    const mimeType = resp.headers.get("content-type")?.split(";")[0];
-    if (typeof mimeType !== "string")
-      return { succeed: false, reason: "bad headers returned from server" };
+        const mimeType = resp.headers.get("content-type")?.split(";")[0];
+        if (typeof mimeType !== "string")
+          return { succeed: false, reason: "missing 'content-type' header" };
 
-    /* Save file to user storage in the app dir */
-    const uri = await FileSystem.StorageAccessFramework.createFileAsync(
-      permissions.directoryUri,
-      filename.replace(/^\/+|\/+$/g, "").split(".")[0],
-      mimeType
+        /* Save file to user storage in the app dir */
+        const uri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          filename.replace(/^\/+|\/+$/g, "").split(".")[0],
+          mimeType
+        );
+        await FileSystem.writeAsStringAsync(
+          uri,
+          base64File.split("base64,")[1],
+          {
+            encoding: FileSystem.EncodingType.Base64,
+          }
+        );
+
+        return { succeed: true };
+      }
     );
-    await FileSystem.writeAsStringAsync(uri, base64File.split("base64,")[1], {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    const download_result = await Promise.all(download_iter);
 
-    return { succeed: true };
+    const succeed = download_result.every(({ succeed }) => succeed);
+    return { succeed };
   } catch (e) {
     return { succeed: false, reason: e as string };
   }
@@ -210,9 +223,12 @@ const HandleRequest = async <T = never>(
     const resp = await fetch(call_url, {
       method,
       body,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers:
+        typeof body === "string"
+          ? {
+              "Content-Type": "application/json",
+            }
+          : undefined,
     });
 
     let respBody: ServerResponse<string>;
@@ -245,16 +261,17 @@ const HandleRequest = async <T = never>(
       data: parsedData,
       reason: respBody.reason,
     };
-  } catch (_) {
+  } catch (e) {
     return {
       succeed: false,
-      reason: "Client failed to send request to the server",
+      reason: `Client failed to send request to the server: ${e}}`,
     };
   }
 };
 
 const build_uri = (uri: string, datas: object): string => {
   for (const [key, val] of Object.entries(datas))
-    uri = uri.replace(`{${key}}`, val);
+    if (Array.isArray(val)) uri = uri.replace(`{${key}}`, val.join(","));
+    else uri = uri.replace(`{${key}}`, val);
   return uri;
 };

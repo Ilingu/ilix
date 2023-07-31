@@ -10,6 +10,7 @@ import ColorScheme from "../../../lib/Theme";
 import Button from "../../design/Button";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import TransfersContext from "../../../lib/Context/Transfer";
+import Separator from "../../design/Separator";
 
 type InboxNavigationProps = NativeStackScreenProps<HomeNestedStack, "default">;
 const HomeDefault: React.FC<InboxNavigationProps> = ({ navigation }) => {
@@ -33,9 +34,7 @@ const HomeDefault: React.FC<InboxNavigationProps> = ({ navigation }) => {
             <Text style={tw`font-bold text-amber-400`}>{device_name}</Text>!
           </Text>
 
-          <View style={tw`flex justify-center items-center my-2`}>
-            <View style={tw`w-3/4 border-t-[1px] border-gray-500`}></View>
-          </View>
+          <Separator />
 
           <Button
             childStyle={tw`bg-[${ColorScheme.PRIMARY_CONTENT}] text-white mb-2 mx-2`}

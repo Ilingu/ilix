@@ -17,6 +17,7 @@ import ColorScheme from "../../../lib/Theme";
 import { AntDesign } from "@expo/vector-icons";
 import Button from "../../design/Button";
 import { pushToast } from "../../../lib/utils";
+import Separator from "../../design/Separator";
 
 type PoolSettingsNavigationProps = NativeStackScreenProps<
   HomeNestedStack,
@@ -50,9 +51,7 @@ const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({
             </Text>
           </View>
 
-          <View style={tw`flex justify-center items-center my-2`}>
-            <View style={tw`w-3/4 border-t-[1px] border-gray-500`}></View>
-          </View>
+          <Separator />
 
           <View style={tw`max-h-60 overflow-hidden`}>
             <FlatList

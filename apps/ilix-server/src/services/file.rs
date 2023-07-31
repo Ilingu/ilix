@@ -27,7 +27,7 @@ type GetFileResult = Either<ResponsePayload, Result<NamedFile>>;
 #[get("/{file_id}")]
 async fn get_file(
     db: web::Data<IlixDB>,
-    info: web::Json<GetFilePayload>,
+    info: web::Query<GetFilePayload>,
     file_id: web::Path<String>,
 ) -> GetFileResult {
     let key_phrase = match KeyPhrase::try_from(info.key_phrase.to_owned()) {

@@ -28,3 +28,17 @@ export interface FilePoolTransfer {
   from: string; // device id
   files_id: string[]; // _id pointer reference to files
 }
+
+export interface FileInfo {
+  _id: {
+    $oid: string; // file_id
+  };
+  filename: string;
+  chunkSize: number;
+  length: number;
+  uploadDate: {
+    $date: {
+      $numberLong: number;
+    };
+  };
+}

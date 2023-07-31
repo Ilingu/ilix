@@ -91,9 +91,13 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
         succeed: getSuccess,
         data: PoolData,
         reason,
-      } = await ApiClient.get("/pool/{pool_kp}", {
-        pool_kp: SyncCodeCopy,
-      });
+      } = await ApiClient.get(
+        "/pool/{pool_kp}",
+        {
+          pool_kp: SyncCodeCopy,
+        },
+        undefined
+      );
 
       if (!getSuccess || !PoolData)
         return pushToast(
@@ -158,7 +162,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
           style={tw`w-3/4 py-4 border-2 border-black rounded-xl bg-white z-10`}
         >
           <Image
-            source={require("../../../assets/icon.png")}
+            source={require("../../../assets/Images/icon.png")}
             style={tw`w-[72px] h-[72px] rounded-xl mx-auto`}
           />
           <Text

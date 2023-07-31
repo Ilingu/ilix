@@ -10,6 +10,7 @@ import { useContext } from "react";
 import PoolContext from "../../../../lib/Context/Pool";
 import ProfilePicture from "../../../design/ProfilePicture";
 import AuthContext from "../../../../lib/Context/Auth";
+import Separator from "../../../design/Separator";
 
 type SendNavigationProps = NativeStackScreenProps<HomeNestedStack, "send">;
 const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {
@@ -30,9 +31,7 @@ const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {
             Transfer
           </Text>
 
-          <View style={tw`flex justify-center items-center my-2`}>
-            <View style={tw`w-3/4 border-t-[1px] border-gray-500`}></View>
-          </View>
+          <Separator />
 
           <View style={tw`max-h-60 overflow-hidden`}>
             {pools?.current.devices_id_to_name === undefined ||

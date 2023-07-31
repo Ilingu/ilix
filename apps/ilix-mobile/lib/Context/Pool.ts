@@ -5,6 +5,7 @@ export type StoredPools = {
   current_index: number;
   pools: StoredDevicesPool[];
   get current(): StoredDevicesPool;
+  get currentName(): (device_id: string) => string;
 };
 
 export interface PoolCtxShape {

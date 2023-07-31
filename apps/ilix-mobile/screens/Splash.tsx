@@ -30,7 +30,7 @@ export default function Splash({ navigation }: NavigationProps) {
   return (
     <SafeAreaProvider>
       <Image
-        source={require("../assets/splash.png")}
+        source={require("../assets/Images/splash.png")}
         style={tw`w-full h-full`}
       />
       <StatusBar style="light" backgroundColor="black" />

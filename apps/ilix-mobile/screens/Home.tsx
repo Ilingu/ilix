@@ -27,7 +27,7 @@ export type HomeNestedStack = {
     pool: StoredDevicesPool;
   };
   ViewTransfer: {
-    transfer: FilePoolTransfer;
+    transfer_id: string;
   };
 };
 const { Screen, Navigator } = createNativeStackNavigator<HomeNestedStack>();

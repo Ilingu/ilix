@@ -10,6 +10,7 @@ import ColorScheme from "../../../../lib/Theme";
 import { AntDesign, FontAwesome } from "@expo/vector-icons";
 import PoolContext from "../../../../lib/Context/Pool";
 import ProfilePicture from "../../../design/ProfilePicture";
+import Separator from "../../../design/Separator";
 
 type InboxNavigationProps = NativeStackScreenProps<HomeNestedStack, "inbox">;
 const Inbox: React.FC<InboxNavigationProps> = ({ navigation }) => {
@@ -34,9 +35,7 @@ const Inbox: React.FC<InboxNavigationProps> = ({ navigation }) => {
             {transfer.length >= 2 ? "s" : ""} opened
           </Text>
 
-          <View style={tw`flex justify-center items-center my-2`}>
-            <View style={tw`w-3/4 border-t-[1px] border-gray-500`}></View>
-          </View>
+          <Separator />
 
           <View style={tw`max-h-60 overflow-hidden`}>
             <FlatList
@@ -45,13 +44,13 @@ const Inbox: React.FC<InboxNavigationProps> = ({ navigation }) => {
                 <TouchableOpacity
                   key={index}
                   onPress={() =>
-                    navigation.push("ViewTransfer", { transfer: { ...item } })
+                    navigation.push("ViewTransfer", { transfer_id: item._id })
                   }
                   style={tw`flex flex-row items-center gap-x-2 mx-2 p-2 border-2 border-black rounded-lg mb-2`}
                 >
                   <ProfilePicture width={32} height={32} />
                   <Text style={tw`flex-1 font-semibold`}>
-                    {pools?.current.devices_id_to_name[item.from]}
+                    {pools?.currentName(item.from)}
                   </Text>
                   <FontAwesome name="caret-right" size={24} color="black" />
                 </TouchableOpacity>
