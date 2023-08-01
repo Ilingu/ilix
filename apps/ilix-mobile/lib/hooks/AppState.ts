@@ -9,6 +9,7 @@ import { AS_Clear, AS_Store, POOL_KEY } from "../db/AsyncStorage";
 import ApiClient from "../ApiClient";
 import { IsCodeOk, ToastDuration, pushToast } from "../utils";
 import { GetStoredPools } from "../db/Pools";
+import SSEClient from "../sse";
 
 interface AppStateShape {
   authState: AuthShape;
@@ -17,6 +18,9 @@ interface AppStateShape {
 }
 
 const useAppState = (): AppStateShape => {
+  //#region : SSE State
+  //#endregion
+
   //#region : Auth State
   const [authState, setAuthState] = useState<AuthShape>({
     cascading_update: true,
@@ -137,19 +141,40 @@ const useAppState = (): AppStateShape => {
       return { succeed: true };
     };
 
-    const lastPoolLoadingState = useRef(false);
+    const handleSseEvent = async (sse_handler: SSEClient) => {
+      sse_handler.addEventListener("on_pool", (updated_pool) => {
+        console.log({ updated_pool });
+      });
+      sse_handler.addEventListener("on_transfer", (updated_transfer) => {
+        console.log({ updated_transfer });
+      });
+      sse_handler.addEventListener("on_logout", logOut);
+    };
+
     useEffect(() => {
-      const isFirstLoad = lastPoolLoadingState.current === false;
+      (async () => {
+        if (authState.device_id === undefined || authState.pool_key_phrase === undefined) return;
+        const { succeed, data: SSEHandler } = await SSEClient.new_connection(
+          authState.device_id,
+          authState.pool_key_phrase
+        );
+        if (!succeed || !SSEHandler || !(SSEHandler instanceof SSEClient)) return;
+        handleSseEvent(SSEHandler);
+      })();
+    }, [authState.device_id, authState.pool_key_phrase]);
+
+    const isFirstLoad = useRef(true);
+    useEffect(() => {
       if (!poolState.cascading_update || poolState.loading) return;
 
       const poolKp = poolState.pools?.current.SS_key_hashed_kp;
       if (poolKp === undefined) {
-        isFirstLoad && setAuthInitialState();
+        isFirstLoad.current && setAuthInitialState();
         return;
       }
 
-      if (isFirstLoad) lastPoolLoadingState.current = true;
-      (isFirstLoad ? setAuthInitialState : setPoolKeyPhrase)(poolKp);
+      (isFirstLoad.current ? setAuthInitialState : setPoolKeyPhrase)(poolKp);
+      if (isFirstLoad.current) isFirstLoad.current = false;
     }, [poolState.loading, poolState.pools?.current_index, poolState.cascading_update]);
   }
   //#endregion

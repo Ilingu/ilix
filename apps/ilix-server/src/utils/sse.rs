@@ -18,7 +18,7 @@ use super::{hash, keyphrase::KeyPhrase};
 pub enum SSEData {
     Pool(DevicesPool),
     Transfer(FilePoolTransferExt),
-    RefreshPool,
+    Logout,
 }
 
 #[derive(serde::Serialize)]
@@ -29,10 +29,24 @@ enum BroadcastMessage {
 }
 
 impl From<BroadcastMessage> for Event {
-    fn from(value: BroadcastMessage) -> Self {
-        sse::Event::Data(
-            sse::Data::new_json(value).unwrap_or(sse::Data::new("Failed to stringify message")),
-        )
+    fn from(msg: BroadcastMessage) -> Self {
+        match msg {
+            BroadcastMessage::Ping => sse::Event::Comment("Ping".into()),
+            BroadcastMessage::Connected => {
+                sse::Data::new("client connected").event("connected").into()
+            }
+            BroadcastMessage::Data(data) => {
+                let event_name = match data {
+                    SSEData::Pool(_) => "pool",
+                    SSEData::Transfer(_) => "transfer",
+                    SSEData::Logout => "logout",
+                };
+                sse::Data::new_json(data)
+                    .unwrap_or(sse::Data::new("Failed to stringify message"))
+                    .event(event_name)
+                    .into()
+            }
+        }
     }
 }
 
@@ -57,11 +71,11 @@ impl Broadcaster {
         this
     }
 
-    /// Pings clients every 10 seconds to see if they are alive and remove them from the broadcast
+    /// Pings clients every 30 seconds to see if they are alive and remove them from the broadcast
     /// list if not.
     fn spawn_ping(this: Arc<Self>) {
         actix_web::rt::spawn(async move {
-            let mut interval = interval(Duration::from_secs(10));
+            let mut interval = interval(Duration::from_secs(30));
 
             loop {
                 interval.tick().await;

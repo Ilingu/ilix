@@ -1,6 +1,11 @@
+import "react-native-get-random-values"; // must be in the top
+import { v4 as uuidv4 } from "uuid";
+
 import { ToastAndroid } from "react-native";
 import { SHA3 } from "sha3";
 import * as Clipboard from "expo-clipboard";
+
+export const GenerateUuid = () => uuidv4();
 
 export const DegToRad = (deg: number): number => (deg * Math.PI) / 180;
 

@@ -175,7 +175,7 @@ async fn delete_pool(
         Ok(pool) => {
             tokio::spawn(async move {
                 let _ = sse
-                    .broadcast_to(&pool.devices_id.clone(), &key_phrase, SSEData::RefreshPool)
+                    .broadcast_to(&pool.devices_id.clone(), &key_phrase, SSEData::Logout)
                     .await;
             });
             ResponsePayload::new(true, &(), None, None)
