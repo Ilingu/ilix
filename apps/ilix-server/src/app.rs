@@ -20,6 +20,7 @@ pub enum ServerErrors {
     DecryptionError,
     FileNotFound,
     HashError,
+    SseFailedToSend,
 }
 
 impl ServerErrors {

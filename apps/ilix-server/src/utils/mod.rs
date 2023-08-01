@@ -4,7 +4,16 @@ pub mod sse;
 
 use std::env;
 
+use hex_string::HexString;
 use log::{debug, error, info, log_enabled, trace, warn, Level};
+use sha3::{Digest, Sha3_256};
+
+pub fn hash<T: Into<String>>(msg: T) -> String {
+    let mut hasher = Sha3_256::new();
+    hasher.update(msg.into().as_bytes());
+    let result_buf = hasher.finalize().to_vec();
+    HexString::from_bytes(&result_buf).as_string()
+}
 
 pub fn is_prod() -> bool {
     env::var("APP_MODE")

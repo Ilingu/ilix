@@ -1,7 +1,5 @@
 use actix_web::web;
 use anyhow::Result;
-use hex_string::HexString;
-use sha3::{Digest, Sha3_256};
 use std::{env, fs};
 
 use rand::Rng;
@@ -89,14 +87,9 @@ impl KeyPhrase {
             return Err(ServerErrors::HashError);
         }
 
-        let mut hasher = Sha3_256::new();
         let mut result = self.0.clone();
-
         for _ in 0..hash_round {
-            hasher.update(result.as_bytes());
-            let result_buf = hasher.finalize().to_vec();
-            result = HexString::from_bytes(&result_buf).as_string();
-            hasher = Sha3_256::new();
+            result = super::hash(result);
         }
         Ok(result)
     }

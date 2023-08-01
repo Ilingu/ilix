@@ -1,5 +1,5 @@
 pub mod collections;
-mod models;
+pub mod models;
 
 use anyhow::Result;
 use std::env;

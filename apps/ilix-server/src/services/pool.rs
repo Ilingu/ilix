@@ -5,7 +5,11 @@ use crate::{
     app::ServerErrors,
     db::{collections::DevicePoolsCollection, IlixDB},
     services::BAD_ARGS_RESP,
-    utils::{is_str_empty, keyphrase::KeyPhrase},
+    utils::{
+        is_str_empty,
+        keyphrase::KeyPhrase,
+        sse::{Broadcaster, SSEData},
+    },
 };
 
 use super::ResponsePayload;
@@ -20,7 +24,13 @@ async fn get_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> impl 
     let db_result = db.client.get_pool(&key_phrase).await;
     match db_result {
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
-        Err(err) => ResponsePayload::new(false, &(), None, Some(err.to_string())),
+        Err(err) => {
+            let err_status_code = match err {
+                ServerErrors::PoolNotFound => Some(StatusCode::NOT_FOUND),
+                _ => None,
+            };
+            ResponsePayload::new(false, &(), err_status_code, Some(err.to_string()))
+        }
     }
 }
 
@@ -33,6 +43,7 @@ struct JoinPoolPayload {
 #[put("/{key_phrase}/join")]
 async fn join_pool(
     db: web::Data<IlixDB>,
+    sse: web::Data<Broadcaster>,
     info: web::Json<JoinPoolPayload>,
     key_phrase: web::Path<String>,
 ) -> impl Responder {
@@ -51,7 +62,19 @@ async fn join_pool(
         .await;
 
     match db_result {
-        Ok(datas) => ResponsePayload::new(true, &datas, None, None),
+        Ok(datas) => {
+            let sse_data = datas.clone();
+            tokio::spawn(async move {
+                let _ = sse
+                    .broadcast_to(
+                        &sse_data.devices_id.clone(),
+                        &key_phrase,
+                        SSEData::Pool(sse_data),
+                    )
+                    .await;
+            });
+            ResponsePayload::new(true, &datas, None, None)
+        }
         Err(err) => {
             let err_status_code = match err {
                 ServerErrors::AlreadyInPool => StatusCode::CONFLICT,
@@ -72,6 +95,7 @@ struct LeavePoolPayload {
 #[delete("/{key_phrase}/leave")]
 async fn leave_pool(
     db: web::Data<IlixDB>,
+    sse: web::Data<Broadcaster>,
     info: web::Json<LeavePoolPayload>,
     key_phrase: web::Path<String>,
 ) -> impl Responder {
@@ -85,7 +109,14 @@ async fn leave_pool(
 
     let db_result = db.client.leave_pool(&key_phrase, &info.device_id).await;
     match db_result {
-        Ok(_) => ResponsePayload::new(true, &(), None, None),
+        Ok(pool) => {
+            tokio::spawn(async move {
+                let _ = sse
+                    .broadcast_to(&pool.devices_id.clone(), &key_phrase, SSEData::Pool(pool))
+                    .await;
+            });
+            ResponsePayload::new(true, &(), None, None)
+        }
         Err(err) => {
             let err_status_code = match err {
                 ServerErrors::NotInPool => StatusCode::CONFLICT,
@@ -129,7 +160,11 @@ async fn new_pool(db: web::Data<IlixDB>, info: web::Json<NewPoolPayload>) -> imp
 }
 
 #[delete("/{key_phrase}")]
-async fn delete_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> impl Responder {
+async fn delete_pool(
+    db: web::Data<IlixDB>,
+    sse: web::Data<Broadcaster>,
+    key_phrase: web::Path<String>,
+) -> impl Responder {
     let key_phrase = match KeyPhrase::try_from(key_phrase) {
         Ok(d) => d,
         Err(_) => return BAD_ARGS_RESP.clone(),
@@ -137,7 +172,14 @@ async fn delete_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> im
 
     let db_result = db.client.delete_pool(&key_phrase).await;
     match db_result {
-        Ok(_) => ResponsePayload::new(true, &(), None, None),
+        Ok(pool) => {
+            tokio::spawn(async move {
+                let _ = sse
+                    .broadcast_to(&pool.devices_id.clone(), &key_phrase, SSEData::RefreshPool)
+                    .await;
+            });
+            ResponsePayload::new(true, &(), None, None)
+        }
         Err(err) => {
             let err_status_code = match err {
                 ServerErrors::InvalidObjectId => StatusCode::BAD_REQUEST,

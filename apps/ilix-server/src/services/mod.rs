@@ -1,3 +1,4 @@
+pub mod events;
 pub mod file;
 pub mod file_transfer;
 pub mod files;
@@ -36,14 +37,16 @@ impl ResponsePayload {
     pub fn new<T: ?Sized + Serialize>(
         mut success: bool,
         data: &T,
-        error_status: Option<StatusCode>,
-        error_reason: Option<String>,
+        mut error_status: Option<StatusCode>,
+        mut error_reason: Option<String>,
     ) -> Self {
         let data = match success {
-            true => match serde_json::to_string(&data) {
+            true => match serde_json::to_string(data) {
                 Ok(json_str) => Some(json_str),
-                Err(_) => {
+                Err(err) => {
                     success = false;
+                    error_status = Some(StatusCode::INTERNAL_SERVER_ERROR);
+                    error_reason = Some(format!("serde: failed to stringify json response: {err}"));
                     None
                 }
             },

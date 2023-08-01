@@ -1,20 +1,14 @@
 use anyhow::Result;
 use chacha20poly1305::{aead::Aead, AeadCore, Key, KeyInit, XChaCha20Poly1305};
-use hex_string::HexString;
 use rand::rngs::OsRng;
-use sha3::{Digest, Sha3_256};
 
 use crate::app::ServerErrors;
 
+use super::hash;
+
 fn hash_key(key: &str) -> String {
-    let mut hasher = Sha3_256::new();
-    let mut result = key.to_string();
-
-    hasher.update(result.as_bytes());
-    let result_buf = hasher.finalize().to_vec();
-    result = HexString::from_bytes(&result_buf).as_string();
-
-    result[..32].to_string()
+    let hashed_key = hash(key);
+    hashed_key[..32].to_string()
 }
 
 /// return the encrypted datas (nonce + encrypted datas)

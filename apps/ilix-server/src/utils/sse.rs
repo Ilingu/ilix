@@ -1,9 +1,40 @@
 use std::{sync::Arc, time::Duration};
 
 use actix_web::rt::time::interval;
-use actix_web_lab::sse::{self, ChannelStream, Sse};
+use actix_web_lab::sse::{self, ChannelStream, Event, Sse};
+use anyhow::Result;
 use futures_util::future;
 use parking_lot::Mutex;
+use tokio::task;
+
+use crate::{
+    app::ServerErrors,
+    db::models::{DevicesPool, FilePoolTransferExt},
+};
+
+use super::{hash, keyphrase::KeyPhrase};
+
+#[derive(serde::Serialize, Clone)]
+pub enum SSEData {
+    Pool(DevicesPool),
+    Transfer(FilePoolTransferExt),
+    RefreshPool,
+}
+
+#[derive(serde::Serialize)]
+enum BroadcastMessage {
+    Ping,
+    Connected,
+    Data(SSEData),
+}
+
+impl From<BroadcastMessage> for Event {
+    fn from(value: BroadcastMessage) -> Self {
+        sse::Event::Data(
+            sse::Data::new_json(value).unwrap_or(sse::Data::new("Failed to stringify message")),
+        )
+    }
+}
 
 pub struct Broadcaster {
     inner: Mutex<BroadcasterInner>,
@@ -11,7 +42,8 @@ pub struct Broadcaster {
 
 #[derive(Debug, Clone, Default)]
 struct BroadcasterInner {
-    clients: Vec<sse::Sender>,
+    /// Vec<(device_id, sse_channel)>
+    clients: Vec<(String, sse::Sender)>,
 }
 
 impl Broadcaster {
@@ -42,40 +74,70 @@ impl Broadcaster {
     async fn remove_stale_clients(&self) {
         let clients = self.inner.lock().clients.clone();
 
+        let tasks = clients.into_iter().map(|client| {
+            task::spawn(async move {
+                client.1.send(BroadcastMessage::Ping).await.ok()?;
+                Some(client)
+            })
+        });
+
         let mut ok_clients = Vec::new();
-        for client in clients {
-            if client
-                .send(sse::Event::Comment("ping".into()))
-                .await
-                .is_ok()
-            {
-                ok_clients.push(client.clone());
-            }
+        for ok_client in (future::join_all(tasks).await)
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            ok_clients.push(ok_client)
         }
 
         self.inner.lock().clients = ok_clients;
     }
 
-    /// Registers client with broadcaster, returning an SSE response body.
-    pub async fn new_client(&self) -> Sse<ChannelStream> {
-        let (tx, rx) = sse::channel(10);
-
-        tx.send(sse::Data::new("connected")).await.unwrap();
-        self.inner.lock().clients.push(tx);
-
-        rx
+    fn make_client_id(device_id: &str, pool_kp: &KeyPhrase) -> Result<String, ServerErrors> {
+        Ok(hash(format!("{}:{}", device_id, pool_kp.hash()?)))
     }
 
-    /// Broadcasts `msg` to all clients.
-    pub async fn broadcast(&self, msg: &str) {
+    /// Registers client with broadcaster, returning an SSE response body.
+    pub async fn new_client(
+        &self,
+        device_id: &str,
+        pool_kp: &KeyPhrase,
+    ) -> Result<Sse<ChannelStream>, ServerErrors> {
+        let (tx, rx) = sse::channel(10);
+
+        tx.send(BroadcastMessage::Connected).await.unwrap();
+        self.inner
+            .lock()
+            .clients
+            .push((Self::make_client_id(device_id, pool_kp)?, tx));
+
+        Ok(rx)
+    }
+
+    /// Broadcasts `msg` to specified clients of the same pool.
+    pub async fn broadcast_to(
+        &self,
+        device_id: &[String],
+        pool_kp: &KeyPhrase,
+        msg: SSEData,
+    ) -> Result<(), ServerErrors> {
         let clients = self.inner.lock().clients.clone();
-
-        let send_futures = clients
+        let to_clients_ids = device_id
             .iter()
-            .map(|client| client.send(sse::Data::new(msg)));
+            .filter_map(|did| Self::make_client_id(did, pool_kp).ok())
+            .collect::<Vec<_>>();
+        if to_clients_ids.len() != device_id.len() {
+            return Err(ServerErrors::HashError);
+        }
 
-        // try to send to all clients, ignoring failures
-        // disconnected clients will get swept up by `remove_stale_clients`
-        let _ = future::join_all(send_futures).await;
+        let sent_futures = clients
+            .iter()
+            .filter(|(client_id, _)| to_clients_ids.contains(client_id))
+            .map(|(_, sender)| sender.send(BroadcastMessage::Data(msg.clone())));
+        for res in future::join_all(sent_futures).await {
+            res.map_err(|_| ServerErrors::SseFailedToSend)?
+        }
+
+        Ok(())
     }
 }

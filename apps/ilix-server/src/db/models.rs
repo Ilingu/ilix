@@ -8,6 +8,7 @@ pub struct DevicesPool {
     pub pool_name: String,
     pub devices_id: Vec<String>,
     pub devices_id_to_name: HashMap<String, String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub hashed_key_phrase: String,
 }
 
@@ -24,10 +25,11 @@ pub struct FilePoolTransfer {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct FilePoolTransferExt {
     pub _id: String,
+    #[serde(skip_serializing)]
     pub pool_hashed_key_phrase: String, // pointer to DevicesPool kp index
-    pub to: String,                     // device id
-    pub from: String,                   // device id
-    pub files_id: Vec<String>,          // _id pointer reference
+    pub to: String,            // device id
+    pub from: String,          // device id
+    pub files_id: Vec<String>, // _id pointer reference
 }
 
 #[allow(non_snake_case)]

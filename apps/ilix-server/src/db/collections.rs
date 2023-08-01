@@ -38,9 +38,12 @@ pub trait DevicePoolsCollection {
         device_id: &str,
         device_name: &str,
     ) -> Result<DevicesPool, ServerErrors>;
-    async fn leave_pool(&self, key_phrase: &KeyPhrase, device_id: &str)
-        -> Result<(), ServerErrors>;
-    async fn delete_pool(&self, key_phrase: &KeyPhrase) -> Result<(), ServerErrors>;
+    async fn leave_pool(
+        &self,
+        key_phrase: &KeyPhrase,
+        device_id: &str,
+    ) -> Result<DevicesPool, ServerErrors>;
+    async fn delete_pool(&self, key_phrase: &KeyPhrase) -> Result<DevicesPool, ServerErrors>;
     async fn create_pool_hashed_kp_index(&self) -> Result<()>;
 }
 
@@ -63,15 +66,15 @@ static KP_INDEX_MODEL: Lazy<IndexModel> = Lazy::new(|| {
 impl DevicePoolsCollection for Client {
     async fn get_pool(&self, key_phrase: &KeyPhrase) -> Result<DevicesPool, ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
-        let find_report = self
+        let mut device_pool = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
             .find_one(doc! {"hashed_key_phrase": hashed_kp}, None)
             .await
-            .map_err(|_| ServerErrors::MongoError)?;
+            .map_err(|_| ServerErrors::MongoError)?
+            .ok_or(ServerErrors::PoolNotFound)?;
 
         // Security to not expose hashed_key_phrase
-        let mut device_pool = find_report.ok_or(ServerErrors::PoolNotFound)?;
         device_pool.hashed_key_phrase = String::new();
         Ok(device_pool)
     }
@@ -85,31 +88,41 @@ impl DevicePoolsCollection for Client {
         let hashed_kp = key_phrase.hash()?;
 
         let obj_entry = format!("devices_id_to_name.{device_id}");
-        let update_report = self
+        let mut before_update = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
-            .update_one(
+            .find_one_and_update(
                 doc! {"hashed_key_phrase": hashed_kp},
                 doc! {"$addToSet" : {"devices_id": device_id}, "$set": {obj_entry: device_name}},
-                None,
+                Some(
+                    FindOneAndUpdateOptions::builder()
+                        .return_document(Some(ReturnDocument::Before))
+                        .build(),
+                ),
             )
             .await
-            .map_err(|_| ServerErrors::MongoError)?;
-
-        if update_report.matched_count == 0 {
-            return Err(ServerErrors::PoolNotFound);
-        }
-        if update_report.modified_count == 0 {
+            .map_err(|_| ServerErrors::MongoError)?
+            .ok_or(ServerErrors::PoolNotFound)?;
+        if before_update.devices_id.contains(&device_id.to_string()) {
             return Err(ServerErrors::AlreadyInPool);
         }
-        Ok(self.get_pool(key_phrase).await?)
+
+        before_update.devices_id.push(device_id.to_string());
+        before_update
+            .devices_id_to_name
+            .insert(device_id.to_string(), device_name.to_string());
+
+        // Security to not expose hashed_key_phrase
+        before_update.hashed_key_phrase = String::new();
+
+        Ok(before_update)
     }
 
     async fn leave_pool(
         &self,
         key_phrase: &KeyPhrase,
         device_id: &str,
-    ) -> Result<(), ServerErrors> {
+    ) -> Result<DevicesPool, ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
 
         // delete all transfers/files left
@@ -130,7 +143,7 @@ impl DevicePoolsCollection for Client {
 
         // leave pool
         let obj_entry = format!("devices_id_to_name.{device_id}");
-        let before_update_doc = self
+        let mut before_update = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
             .find_one_and_update(
@@ -144,10 +157,8 @@ impl DevicePoolsCollection for Client {
             .map_err(|_| ServerErrors::MongoError)?
             .ok_or(ServerErrors::PoolNotFound)?;
 
-        if !before_update_doc
-            .devices_id
-            .contains(&device_id.to_string())
-            || !before_update_doc
+        if !before_update.devices_id.contains(&device_id.to_string())
+            || !before_update
                 .devices_id_to_name
                 .contains_key(&device_id.to_string())
         {
@@ -155,10 +166,17 @@ impl DevicePoolsCollection for Client {
         }
 
         // if before update, user count is equal to 1, after update the pool is empty, thus we delete it
-        if before_update_doc.devices_id.len() == 1 {
+        if before_update.devices_id.len() == 1 {
             let _ = self.delete_pool(key_phrase).await;
         }
-        Ok(())
+
+        before_update.devices_id.retain(|id| id != device_id);
+        before_update.devices_id_to_name.remove(device_id);
+
+        // Security to not expose hashed_key_phrase
+        before_update.hashed_key_phrase = String::new();
+
+        Ok(before_update)
     }
 
     async fn create_pool(&self, args: NewPoolPayload) -> Result<String, ServerErrors> {
@@ -183,7 +201,7 @@ impl DevicePoolsCollection for Client {
         Ok(kp.0)
     }
 
-    async fn delete_pool(&self, key_phrase: &KeyPhrase) -> Result<(), ServerErrors> {
+    async fn delete_pool(&self, key_phrase: &KeyPhrase) -> Result<DevicesPool, ServerErrors> {
         let pool = self.get_pool(key_phrase).await?;
         let hashed_kp = key_phrase.hash()?;
 
@@ -212,17 +230,18 @@ impl DevicePoolsCollection for Client {
             res.map_err(|_| ServerErrors::MongoError)??
         }
 
-        let delete_report = self
+        let mut delete_report = self
             .database(DB_NAME)
             .collection::<DevicesPool>(DEVICES_POOL_COLL)
-            .delete_one(doc! {"hashed_key_phrase": hashed_kp }, None)
+            .find_one_and_delete(doc! {"hashed_key_phrase": hashed_kp }, None)
             .await
-            .map_err(|_| ServerErrors::MongoError)?;
-        if delete_report.deleted_count == 0 {
-            return Err(ServerErrors::PoolNotFound);
-        }
+            .map_err(|_| ServerErrors::MongoError)?
+            .ok_or(ServerErrors::PoolNotFound)?;
 
-        Ok(())
+        // Security to not expose hashed_key_phrase
+        delete_report.hashed_key_phrase = String::new();
+
+        Ok(delete_report)
     }
 
     /// Creates an index on the "hashed_key_phrase" field to force the values to be unique.
@@ -253,7 +272,7 @@ pub trait FilePoolTransferCollection {
         files_id: &[String],
         transfer_id: &str,
         key_phrase: &KeyPhrase,
-    ) -> Result<(), ServerErrors>;
+    ) -> Result<FilePoolTransferExt, ServerErrors>;
     async fn remove_transfer_file(&self, file_id: &str) -> Result<(), ServerErrors>;
     async fn delete_transfer(
         &self,
@@ -342,28 +361,42 @@ impl FilePoolTransferCollection for Client {
         files_id: &[String],
         transfer_id: &str,
         key_phrase: &KeyPhrase,
-    ) -> Result<(), ServerErrors> {
+    ) -> Result<FilePoolTransferExt, ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
 
         let id = ObjectId::from_str(transfer_id).map_err(|_| ServerErrors::InvalidObjectId)?;
         let update_report = self
             .database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
-            .update_one(
+            .find_one_and_update(
                 doc! {"_id": id, "pool_hashed_key_phrase": hashed_kp},
                 doc! {"$addToSet": {"files_id": {"$each": files_id }}},
-                None,
+                Some(
+                    FindOneAndUpdateOptions::builder()
+                        .return_document(Some(ReturnDocument::After))
+                        .build(),
+                ),
             )
             .await
-            .map_err(|_| ServerErrors::MongoError)?;
-        if update_report.matched_count == 0 {
-            return Err(ServerErrors::TransferNotFound);
-        }
-        if update_report.modified_count == 0 {
+            .map_err(|_| ServerErrors::MongoError)?
+            .ok_or(ServerErrors::TransferNotFound)?;
+
+        if !files_id
+            .iter()
+            .all(|id| update_report.files_id.contains(id))
+        {
             return Err(ServerErrors::MongoError);
         }
 
-        Ok(())
+        let updated_doc = FilePoolTransferExt {
+            _id: update_report._id.to_string(),
+            pool_hashed_key_phrase: String::new(), // to prevent leaks
+            to: update_report.to,
+            from: update_report.from,
+            files_id: update_report.files_id,
+        };
+
+        Ok(updated_doc)
     }
 
     async fn remove_transfer_file(&self, file_id: &str) -> Result<(), ServerErrors> {

@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::db::collections::FileStorageGridFS;
 use crate::services::BAD_ARGS_RESP;
 use crate::utils::keyphrase::KeyPhrase;
+use crate::utils::sse::{Broadcaster, SSEData};
 use crate::{
     app::ServerErrors,
     db::{collections::FilePoolTransferCollection, IlixDB},
@@ -80,6 +81,7 @@ async fn create_transfer(
 #[post("/{key_phrase}/{transfer_id}/add_files")]
 async fn add_files_to_transfer(
     db: web::Data<IlixDB>,
+    sse: web::Data<Broadcaster>,
     path: web::Path<(String, String)>,
     mut form: Multipart,
 ) -> impl Responder {
@@ -147,7 +149,18 @@ async fn add_files_to_transfer(
         .await;
 
     match db_result {
-        Ok(_) => ResponsePayload::new(true, &files_id, None, None),
+        Ok(transfer) => {
+            tokio::spawn(async move {
+                let _ = sse
+                    .broadcast_to(
+                        &[transfer.to.clone()],
+                        &key_phrase,
+                        SSEData::Transfer(transfer),
+                    )
+                    .await;
+            });
+            ResponsePayload::new(true, &files_id, None, None)
+        }
         Err(err) => {
             let _ = db.client.delete_files(&files_id).await; // failed to add transfer, delete all added files
             let err_status_code = match err {
