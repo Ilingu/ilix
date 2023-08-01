@@ -1,5 +1,6 @@
 pub mod encryption;
 pub mod keyphrase;
+pub mod sse;
 
 use std::env;
 
