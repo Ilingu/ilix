@@ -6,7 +6,7 @@ import type {
   FunctionResult,
   ServerResponse,
 } from "./types/interfaces";
-import { blobToBase64 } from "./utils";
+import { IsEmptyString, blobToBase64 } from "./utils";
 
 // Get
 type GetRoutes = "/pool" | "/file-transfer/{device_id}/all" | "/files/info?files_ids={files_ids}";
@@ -89,8 +89,9 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
   ? null
   : never;
 
-export const SERVER_BASE_URL =
-  process.env.NODE_ENV === "development" ? "https://ac55-193-32-126-236.ngrok-free.app" : "";
+export const SERVER_BASE_URL = (
+  process.env.NODE_ENV === "development" ? "https://44ef-193-32-126-236.ngrok-free.app" : ""
+).replace(/\/+$/g, ""); // trim_matches_end of "/"
 
 namespace ApiClient {
   export async function Get<T extends GetRoutes>(
@@ -144,43 +145,134 @@ namespace ApiClient {
     );
   }
 
-  export const AddFilesToTransfer = async (): Promise<FunctionResult> => {
-    return { succeed: false, reason: "not implemented" };
+  export interface PickedFile {
+    /**
+     * Field indicating that the document pick has been successful.
+     */
+    type: "success";
+    /**
+     * Document original name.
+     */
+    name: string;
+    /**
+     * Document size in bytes.
+     */
+    size?: number;
+    /**
+     * An URI to the local document file.
+     */
+    uri: string;
+    /**
+     * Document MIME type.
+     */
+    mimeType?: string;
+    /**
+     * Timestamp of last document modification.
+     */
+    lastModified?: number;
+    /**
+     * `File` object for the parity with web File API.
+     * @platform web
+     */
+    file?: File;
+    /**
+     * `FileList` object for the parity with web File API.
+     * @platform web
+     */
+    output?: FileList | null;
+  }
+
+  export const AddFilesToTransfer = async (
+    transfer_id: string,
+    key_phrase: string,
+    files: PickedFile[],
+    customMsg?: string
+  ): Promise<FunctionResult<string[]>> => {
+    try {
+      const formData = new FormData();
+      if (typeof customMsg === "string" && !IsEmptyString(customMsg))
+        formData.append("custom_message", customMsg);
+
+      for (const [i, { uri, name, mimeType }] of files.entries())
+        formData.append(`file-${i}`, { uri, name, type: mimeType } as unknown as string);
+
+      const response = await fetch(`${SERVER_BASE_URL}/file-transfer/${transfer_id}/add_files`, {
+        method: "POST",
+        headers: { Authorization: key_phrase, "Content-Type": "multipart/form-data" },
+        body: formData,
+      });
+
+      if (response.status !== 200)
+        return { succeed: false, reason: `status code (${response.status}) != 200` };
+
+      const respBody: ServerResponse<string> = await response.json();
+      if (!("success" in respBody) || !("status_code" in respBody) || !("data" in respBody))
+        return {
+          succeed: false,
+          reason: "wrong response type",
+        };
+      if (
+        typeof respBody.success !== "boolean" ||
+        typeof respBody.status_code !== "number" ||
+        typeof respBody.data !== "string"
+      )
+        return {
+          succeed: false,
+          reason: "wrong data type",
+        };
+      if (!respBody.success) return { succeed: false, reason: "Server set as failed" };
+
+      const filesIds: string[] = JSON.parse(respBody.data);
+      if (!Array.isArray(filesIds) || filesIds.length === 0)
+        return {
+          succeed: false,
+          reason: "expected non-empty string array; found something else",
+        };
+
+      return { succeed: true, data: filesIds };
+    } catch (error) {
+      return { succeed: false, reason: `${error}` };
+    }
   };
 
   export const HandleGetFilesAndSave = async (
     files_to_download: [string, string][],
     key_phrase: string
   ): Promise<FunctionResult> => {
-    const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-    if (!permissions.granted) return { succeed: false, reason: "permission not granted" };
-
     try {
+      const permissions =
+        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      if (!permissions.granted) return { succeed: false, reason: "permission not granted" };
+
       const download_iter = files_to_download.map(
         async ([file_id, filename]): Promise<FunctionResult> => {
-          /* Download File from api */
-          const call_url = `${SERVER_BASE_URL}/file/${file_id}`;
-          const resp = await fetch(call_url, { headers: { Authorization: key_phrase } });
-          if (!resp.ok) return { succeed: false, reason: "server failed to fetch file" };
+          try {
+            /* Download File from api */
+            const call_url = `${SERVER_BASE_URL}/file/${file_id}`;
+            const resp = await fetch(call_url, { headers: { Authorization: key_phrase } });
+            if (!resp.ok) return { succeed: false, reason: "server failed to fetch file" };
 
-          const fileBlob = await resp.blob();
-          const base64File = await blobToBase64(fileBlob);
+            const fileBlob = await resp.blob();
+            const base64File = await blobToBase64(fileBlob);
 
-          const mimeType = resp.headers.get("content-type")?.split(";")[0];
-          if (typeof mimeType !== "string")
-            return { succeed: false, reason: "missing 'content-type' header" };
+            const mimeType = resp.headers.get("content-type")?.split(";")[0];
+            if (typeof mimeType !== "string")
+              return { succeed: false, reason: "missing 'content-type' header" };
 
-          /* Save file to user storage in the app dir */
-          const uri = await FileSystem.StorageAccessFramework.createFileAsync(
-            permissions.directoryUri,
-            filename.replace(/^\/+|\/+$/g, "").split(".")[0],
-            mimeType
-          );
-          await FileSystem.writeAsStringAsync(uri, base64File.split("base64,")[1], {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+            /* Save file to user storage in the app dir */
+            const uri = await FileSystem.StorageAccessFramework.createFileAsync(
+              permissions.directoryUri,
+              filename.replace(/^\/+|\/+$/g, "").split(".")[0],
+              mimeType
+            );
+            await FileSystem.writeAsStringAsync(uri, base64File.split("base64,")[1], {
+              encoding: FileSystem.EncodingType.Base64,
+            });
 
-          return { succeed: true };
+            return { succeed: true };
+          } catch (error) {
+            return { succeed: false, reason: `${error}` };
+          }
         }
       );
       const download_result = await Promise.all(download_iter);
@@ -219,6 +311,11 @@ namespace ApiClient {
       }
 
       if (!("success" in respBody) || !("status_code" in respBody))
+        return {
+          succeed: false,
+          reason: "wrong response type",
+        };
+      if (typeof respBody.success !== "boolean" || typeof respBody.status_code !== "number")
         return {
           succeed: false,
           reason: "wrong data type",

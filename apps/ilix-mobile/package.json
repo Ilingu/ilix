@@ -23,7 +23,6 @@
     "TypeScript",
     "Expo"
   ],
-  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start --tunnel",
     "android": "expo start --android",
@@ -36,7 +35,7 @@
     "@react-native-async-storage/async-storage": "1.17.11",
     "@react-navigation/native": "^6.1.6",
     "@react-navigation/native-stack": "^6.9.12",
-    "expo": "~48.0.11",
+    "expo": "~48.0.18",
     "expo-application": "~5.1.1",
     "expo-barcode-scanner": "~12.3.2",
     "expo-camera": "~13.2.1",
@@ -56,7 +55,8 @@
     "react-native-svg": "^13.4.0",
     "react-native-uuid": "^2.0.1",
     "sha3": "^2.1.4",
-    "twrnc": "^3.6.0"
+    "twrnc": "^3.6.0",
+    "expo-document-picker": "~11.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

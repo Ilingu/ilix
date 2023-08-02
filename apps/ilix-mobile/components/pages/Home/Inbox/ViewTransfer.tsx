@@ -5,7 +5,7 @@ import tw from "twrnc";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ParticleView from "../../../animations/Particles";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FileInfo } from "../../../../lib/types/interfaces";
 import ApiClient from "../../../../lib/ApiClient";
 import { ToastDuration, pushToast } from "../../../../lib/utils";
@@ -87,6 +87,25 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
     else pushToast("Failed to download all files");
   }, []);
 
+  const deleteTransfer = async () => {
+    if (transfer === undefined) return;
+    if (device_id === undefined || pool_key_phrase === undefined)
+      return pushToast("Please join a pool before");
+
+    const { succeed } = await ApiClient.Delete(
+      "/file-transfer/{device_id}/{transfer_id}",
+      { device_id, transfer_id: transfer._id },
+      undefined,
+      { pool_kp: pool_key_phrase }
+    );
+
+    if (succeed) {
+      pushToast("Deleted successfully, refreshing transfer inbox...");
+      navigation.goBack();
+      refreshTransfer();
+    } else pushToast("Failed to delete file");
+  };
+
   const fetchFilesInfo = async (refresh = false) => {
     if (transfer === undefined) return;
     type CachedFilesInfo = { fi: FileInfo[]; exp: number };
@@ -167,25 +186,6 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
     });
   };
 
-  const deleteTransfer = async () => {
-    if (transfer === undefined) return;
-    if (device_id === undefined || pool_key_phrase === undefined)
-      return pushToast("Please join a pool before");
-
-    const { succeed } = await ApiClient.Delete(
-      "/file-transfer/{device_id}/{transfer_id}",
-      { device_id, transfer_id: transfer._id },
-      undefined,
-      { pool_kp: pool_key_phrase }
-    );
-
-    if (succeed) {
-      pushToast("Deleted successfully, refreshing transfer inbox...");
-      navigation.goBack();
-      refreshTransfer();
-    } else pushToast("Failed to delete file");
-  };
-
   if (transfer === undefined) {
     pushToast("Invalid transfer");
     navigation.goBack();
@@ -245,7 +245,7 @@ type FileProps = {
   deleteFile: (file_id: string) => Promise<void>;
   downloadFiles: (files_to_download: [string, string][]) => Promise<void>;
 };
-const File: React.FC<FileProps> = ({ fi, deleteFile, downloadFiles }) => {
+const File: React.FC<FileProps> = memo(({ fi, deleteFile, downloadFiles }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -302,6 +302,6 @@ const File: React.FC<FileProps> = ({ fi, deleteFile, downloadFiles }) => {
       )}
     </View>
   );
-};
+});
 
 export default ViewTransfer;
