@@ -143,12 +143,39 @@ const useAppState = (): AppStateShape => {
 
     const handleSseEvent = async (sse_handler: SSEClient) => {
       sse_handler.addEventListener("on_pool", (updated_pool) => {
-        console.log({ updated_pool });
+        const currIndex = poolStateRef.current.pools?.current_index;
+        if (
+          currIndex === undefined ||
+          poolStateRef.current._updatePool === undefined ||
+          authStateRef.current.pool_key_phrase === undefined
+        )
+          return;
+
+        // by design, the "updated_pool" is the updated pool data of the current pool in the UI
+        // because SSE is linked to the event of the current pool
+        poolStateRef.current._updatePool(currIndex, {
+          ...updated_pool,
+          SS_key_hashed_kp: MakeKeyPhraseKey(authStateRef.current.pool_key_phrase),
+        });
       });
       sse_handler.addEventListener("on_transfer", (updated_transfer) => {
+        // update the old transfer by the updated one
+        setTransferState(([l, s, transfers, refresh]) => {
+          const update_index = transfers.findIndex(({ _id }) => _id === updated_transfer._id);
+          if (update_index === -1) return [l, s, [updated_transfer, ...transfers], refresh];
+
+          const newTransfers = [...transfers];
+          newTransfers[update_index] = updated_transfer;
+
+          return [l, s, newTransfers, refresh];
+        });
+
         console.log({ updated_transfer });
       });
-      sse_handler.addEventListener("on_logout", logOut);
+      sse_handler.addEventListener("on_logout", () => {
+        pushToast("This pool has been deleted");
+        logOut();
+      });
     };
 
     useEffect(() => {
@@ -187,6 +214,7 @@ const useAppState = (): AppStateShape => {
       defaultState.addPool = addPool;
       defaultState.setPool = setPool;
       defaultState.leavePool = leavePool;
+      defaultState._updatePool = updatePool;
 
       setPoolState(defaultState);
     };

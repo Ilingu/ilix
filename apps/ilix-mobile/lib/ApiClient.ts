@@ -90,7 +90,7 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
   : never;
 
 export const SERVER_BASE_URL =
-  process.env.NODE_ENV === "development" ? "https://f5c7-193-32-126-212.ngrok-free.app" : "";
+  process.env.NODE_ENV === "development" ? "https://357e-193-32-126-236.ngrok-free.app" : "";
 
 export default class ApiClient {
   public static async get<T extends GetRoutes>(

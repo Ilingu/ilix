@@ -8,17 +8,23 @@ type callbackFn<T extends Events> = T extends "on_pool"
   ? (pool: DevicesPool) => void
   : T extends "on_transfer"
   ? (transfer: FilePoolTransfer) => void
-  : T extends "on_logout" | "closed"
+  : T extends "on_logout" | "onclosed"
   ? () => void
-  : T extends "error"
+  : T extends "onerror"
   ? (reason?: string) => void
   : never;
+
+type SSEData<T extends DevicesPool | FilePoolTransfer> = T extends DevicesPool
+  ? {
+      Pool: DevicesPool;
+    }
+  : { Transfer: FilePoolTransfer };
 
 type CustomEvents = "connected" | "pool" | "transfer" | "logout";
 export default class SSEClient {
   private static _handler: SSEClient;
 
-  readonly sse_connection: EventSource<CustomEvents>;
+  private sse_connection: EventSource<CustomEvents>;
 
   private poolListeners: { [K in string]: callbackFn<"on_pool"> } = {};
   private transferListeners: { [K in string]: callbackFn<"on_transfer"> } = {};
@@ -30,13 +36,9 @@ export default class SSEClient {
     this.sse_connection = sse_connection;
   }
 
-  private static get handler() {
-    return this._handler;
-  }
-
   private static new_handler(sse_connection: EventSource<CustomEvents>) {
     this._handler = new this(sse_connection);
-    return this.handler;
+    return this._handler;
   }
 
   public static async new_connection(
@@ -46,7 +48,8 @@ export default class SSEClient {
     if (IsEmptyString(device_id) || !IsCodeOk(key_phrase)) return { succeed: false };
 
     const sse_connection = new EventSource<CustomEvents>(
-      `${SERVER_BASE_URL}/events?device_id=${device_id}&key_phrase=${key_phrase}`
+      `${SERVER_BASE_URL}/events?device_id=${device_id}&key_phrase=${key_phrase}`,
+      {}
     );
 
     const { succeed, reason } = await new Promise<FunctionResult>((res) => {
@@ -56,11 +59,15 @@ export default class SSEClient {
       );
       setTimeout(() => res({ succeed: false, reason: "timeout" }), 5000);
     });
+    if (!succeed) {
+      sse_connection.close();
+      return { succeed: false, reason };
+    }
 
     const handler = this.new_handler(sse_connection);
     handler.listenToEvent();
 
-    return { succeed, reason, data: succeed ? handler : undefined };
+    return { succeed: true, data: handler };
   }
 
   private listenToEvent() {
@@ -68,8 +75,16 @@ export default class SSEClient {
       if (msg.type !== "pool" || typeof msg.data !== "string") return;
 
       try {
-        const pool: DevicesPool = JSON.parse(msg.data);
-        if (!("pool_name" in pool) || !("devices_id" in pool) || !("devices_id_to_name" in pool))
+        const resp_data: SSEData<DevicesPool> = JSON.parse(msg.data);
+        if (!("Pool" in resp_data)) return;
+
+        const pool = resp_data.Pool;
+        if (
+          pool === undefined ||
+          !("pool_name" in pool) ||
+          !("devices_id" in pool) ||
+          !("devices_id_to_name" in pool)
+        )
           return;
         Object.values(this.poolListeners).forEach((cb) => cb(pool));
       } catch {}
@@ -77,8 +92,12 @@ export default class SSEClient {
     this.sse_connection.addEventListener("transfer", (msg) => {
       if (msg.type !== "transfer" || typeof msg.data !== "string") return;
       try {
-        const transfer: FilePoolTransfer = JSON.parse(msg.data);
+        const resp_data: SSEData<FilePoolTransfer> = JSON.parse(msg.data);
+        if (!("Transfer" in resp_data)) return;
+
+        const transfer = resp_data.Transfer;
         if (
+          transfer === undefined ||
           !("_id" in transfer) ||
           !("to" in transfer) ||
           !("from" in transfer) ||
@@ -91,6 +110,13 @@ export default class SSEClient {
     this.sse_connection.addEventListener("logout", (msg) => {
       if (msg.type !== "logout" || typeof msg.data !== "string") return;
       Object.values(this.logoutListeners).forEach((cb) => cb());
+    });
+    this.sse_connection.addEventListener("close", () => {
+      Object.values(this.closeListeners).forEach((cb) => cb());
+    });
+    this.sse_connection.addEventListener("error", () => {
+      this.sse_connection.close();
+      Object.values(this.errorListeners).forEach((cb) => cb());
     });
   }
 

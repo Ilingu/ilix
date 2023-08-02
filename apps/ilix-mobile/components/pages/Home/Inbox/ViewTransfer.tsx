@@ -82,13 +82,8 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
     else pushToast("Failed to download all files");
   }, []);
 
-  if (transfer === undefined) {
-    pushToast("Invalid transfer");
-    navigation.goBack();
-    return <Text>Invalid transfer</Text>;
-  }
-
   const fetchFilesInfo = async (refresh = false) => {
+    if (transfer === undefined) return;
     type CachedFilesInfo = { fi: FileInfo[]; exp: number };
 
     let success = false;
@@ -167,6 +162,7 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
   };
 
   const deleteTransfer = async () => {
+    if (transfer === undefined) return;
     if (device_id === undefined || pool_key_phrase === undefined)
       return pushToast("Please join a pool before");
 
@@ -182,6 +178,12 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
       refreshTransfer();
     } else pushToast("Failed to delete file");
   };
+
+  if (transfer === undefined) {
+    pushToast("Invalid transfer");
+    navigation.goBack();
+    return <Text>Invalid transfer</Text>;
+  }
 
   return (
     <SafeAreaProvider>
