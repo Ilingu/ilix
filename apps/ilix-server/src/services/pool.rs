@@ -146,7 +146,7 @@ async fn new_pool(db: web::Data<IlixDB>, info: web::Json<NewPoolPayload>) -> imp
     }
 }
 
-#[delete("/{key_phrase}")]
+#[delete("")]
 async fn delete_pool(
     db: web::Data<IlixDB>,
     sse: web::Data<Broadcaster>,
