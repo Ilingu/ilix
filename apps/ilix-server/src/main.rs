@@ -1,6 +1,7 @@
 mod db;
 mod services;
 mod utils;
+mod extractors;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use anyhow::Result;
@@ -59,7 +60,6 @@ async fn main() -> std::io::Result<()> {
             // app datas
             .app_data(web::Data::new(db.clone()))
             .app_data(web::Data::from(Arc::clone(&see_broadcaster)))
-            // .app_data(web::Data::new(app))
             // services
             .service(
                 web::scope("/pool")

@@ -18,16 +18,12 @@ use crate::{
 
 use super::ResponsePayload;
 
-#[get("/{key_phrase}/{device_id}/all")]
+#[get("/{device_id}/all")]
 async fn get_all_transfer(
     db: web::Data<IlixDB>,
-    path: web::Path<(String, String)>,
+    key_phrase: KeyPhrase,
+    device_id: web::Path<String>,
 ) -> impl Responder {
-    let (key_phrase, device_id) = path.into_inner();
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
     if is_str_empty(&device_id) {
         return BAD_ARGS_RESP.clone();
     }
@@ -46,16 +42,12 @@ struct AddTransferPayload {
 }
 
 /// create_transfer only create an empty transfer object in db, client must call `add_files_to_transfer` afterhand to attach files to the transfer
-#[post("/{key_phrase}/new")]
+#[post("/new")]
 async fn create_transfer(
     db: web::Data<IlixDB>,
     query: web::Query<AddTransferPayload>,
-    key_phrase: web::Path<String>,
+    key_phrase: KeyPhrase,
 ) -> impl Responder {
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
     if is_str_empty(&query.to) || is_str_empty(&query.from) {
         return BAD_ARGS_RESP.clone();
     }
@@ -78,19 +70,14 @@ async fn create_transfer(
 }
 
 /// attach files to a transfer
-#[post("/{key_phrase}/{transfer_id}/add_files")]
+#[post("/{transfer_id}/add_files")]
 async fn add_files_to_transfer(
     db: web::Data<IlixDB>,
     sse: web::Data<Broadcaster>,
-    path: web::Path<(String, String)>,
+    key_phrase: KeyPhrase,
+    transfer_id: web::Path<String>,
     mut form: Multipart,
 ) -> impl Responder {
-    let (key_phrase, transfer_id) = path.into_inner();
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
-
     if is_str_empty(&transfer_id) {
         return BAD_ARGS_RESP.clone();
     }
@@ -172,16 +159,13 @@ async fn add_files_to_transfer(
     }
 }
 
-#[delete("/{key_phrase}/{device_id}/{transfer_id}")]
+#[delete("/{device_id}/{transfer_id}")]
 async fn delete_transfer(
     db: web::Data<IlixDB>,
-    path: web::Path<(String, String, String)>,
+    key_phrase: KeyPhrase,
+    path: web::Path<(String, String)>,
 ) -> impl Responder {
-    let (key_phrase, device_id, transfer_id) = path.into_inner();
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
+    let (device_id, transfer_id) = path.into_inner();
 
     if is_str_empty(&device_id) || is_str_empty(&transfer_id) {
         return BAD_ARGS_RESP.clone();

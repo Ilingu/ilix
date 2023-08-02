@@ -4,10 +4,12 @@ pub mod file_transfer;
 pub mod files;
 pub mod pool;
 
+use std::fmt::Display;
+
 use actix_web::{
     body::BoxBody,
     http::{header::ContentType, StatusCode},
-    HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
+    HttpRequest, HttpResponse, HttpResponseBuilder, Responder, ResponseError,
 };
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -21,7 +23,7 @@ static BAD_ARGS_RESP: Lazy<ResponsePayload> = Lazy::new(|| {
     )
 });
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct ResponsePayload {
     success: bool,
     status_code: u16,
@@ -75,7 +77,27 @@ impl Responder for ResponsePayload {
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
         // Create response and set content type
-        HttpResponseBuilder::new(StatusCode::from_u16(self.status_code).unwrap())
+        let statuc_code = StatusCode::from_u16(self.status_code).unwrap_or(if self.success {
+            StatusCode::OK
+        } else {
+            StatusCode::INTERNAL_SERVER_ERROR
+        });
+        HttpResponseBuilder::new(statuc_code)
+            .content_type(ContentType::json())
+            .json(self)
+    }
+}
+
+impl Display for ResponsePayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl ResponseError for ResponsePayload {
+    fn error_response(&self) -> HttpResponse<BoxBody> {
+        let status_code = StatusCode::from_u16(self.status_code).unwrap_or(Self::status_code(self));
+        HttpResponseBuilder::new(status_code)
             .content_type(ContentType::json())
             .json(self)
     }

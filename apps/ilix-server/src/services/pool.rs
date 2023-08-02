@@ -14,13 +14,8 @@ use crate::{
 
 use super::ResponsePayload;
 
-#[get("/{key_phrase}")]
-async fn get_pool(db: web::Data<IlixDB>, key_phrase: web::Path<String>) -> impl Responder {
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
-
+#[get("")]
+async fn get_pool(db: web::Data<IlixDB>, key_phrase: KeyPhrase) -> impl Responder {
     let db_result = db.client.get_pool(&key_phrase).await;
     match db_result {
         Ok(datas) => ResponsePayload::new(true, &datas, None, None),
@@ -40,17 +35,13 @@ struct JoinPoolPayload {
     device_name: String,
 }
 
-#[put("/{key_phrase}/join")]
+#[put("/join")]
 async fn join_pool(
     db: web::Data<IlixDB>,
     sse: web::Data<Broadcaster>,
     info: web::Json<JoinPoolPayload>,
-    key_phrase: web::Path<String>,
+    key_phrase: KeyPhrase,
 ) -> impl Responder {
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
     if is_str_empty(&info.device_id) {
         return BAD_ARGS_RESP.clone();
     }
@@ -92,17 +83,13 @@ struct LeavePoolPayload {
     device_id: String,
 }
 
-#[delete("/{key_phrase}/leave")]
+#[delete("/leave")]
 async fn leave_pool(
     db: web::Data<IlixDB>,
     sse: web::Data<Broadcaster>,
     info: web::Json<LeavePoolPayload>,
-    key_phrase: web::Path<String>,
+    key_phrase: KeyPhrase,
 ) -> impl Responder {
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
     if is_str_empty(&info.device_id) {
         return BAD_ARGS_RESP.clone();
     }
@@ -163,13 +150,8 @@ async fn new_pool(db: web::Data<IlixDB>, info: web::Json<NewPoolPayload>) -> imp
 async fn delete_pool(
     db: web::Data<IlixDB>,
     sse: web::Data<Broadcaster>,
-    key_phrase: web::Path<String>,
+    key_phrase: KeyPhrase,
 ) -> impl Responder {
-    let key_phrase = match KeyPhrase::try_from(key_phrase) {
-        Ok(d) => d,
-        Err(_) => return BAD_ARGS_RESP.clone(),
-    };
-
     let db_result = db.client.delete_pool(&key_phrase).await;
     match db_result {
         Ok(pool) => {

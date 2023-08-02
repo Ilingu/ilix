@@ -2,7 +2,6 @@ use std::io::Write;
 
 use actix_files::NamedFile;
 use actix_web::{delete, get, http::StatusCode, web, Either, Responder, Result};
-use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
@@ -16,23 +15,14 @@ use crate::{
 
 use super::ResponsePayload;
 
-#[derive(Deserialize)]
-struct GetFilePayload {
-    key_phrase: String,
-}
-
 // if client wants to get multiple files at once, it musts call async this endpoint and handle the Promises on their own
 type GetFileResult = Either<ResponsePayload, Result<NamedFile>>;
-#[get("/{file_id}")]
+#[get("")]
 async fn get_file(
     db: web::Data<IlixDB>,
-    info: web::Query<GetFilePayload>,
     file_id: web::Path<String>,
+    key_phrase: KeyPhrase,
 ) -> GetFileResult {
-    let key_phrase = match KeyPhrase::try_from(info.key_phrase.to_owned()) {
-        Ok(d) => d,
-        Err(_) => return Either::Left(BAD_ARGS_RESP.clone()),
-    };
     if is_str_empty(&file_id) {
         return Either::Left(BAD_ARGS_RESP.clone());
     }
