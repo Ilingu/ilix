@@ -17,7 +17,7 @@ use super::ResponsePayload;
 
 // if client wants to get multiple files at once, it musts call async this endpoint and handle the Promises on their own
 type GetFileResult = Either<ResponsePayload, Result<NamedFile>>;
-#[get("")]
+#[get("/{file_id}")]
 async fn get_file(
     db: web::Data<IlixDB>,
     file_id: web::Path<String>,
