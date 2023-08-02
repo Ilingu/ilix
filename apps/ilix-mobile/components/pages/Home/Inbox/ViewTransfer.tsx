@@ -7,7 +7,7 @@ import ParticleView from "../../../animations/Particles";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FileInfo } from "../../../../lib/types/interfaces";
-import ApiClient, { HandleGetFilesAndSave } from "../../../../lib/ApiClient";
+import ApiClient from "../../../../lib/ApiClient";
 import { ToastDuration, pushToast } from "../../../../lib/utils";
 import PoolContext from "../../../../lib/Context/Pool";
 import ProfilePicture from "../../../design/ProfilePicture";
@@ -58,7 +58,12 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
 
   const deleteFile = useCallback(
     async (file_id: string) => {
-      const { succeed } = await ApiClient.delete("/file/{file_id}", { file_id }, undefined);
+      const { succeed } = await ApiClient.Delete(
+        "/file/{file_id}",
+        { file_id },
+        undefined,
+        undefined
+      );
 
       if (succeed) {
         pushToast("Deleted successfully");
@@ -76,7 +81,7 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
     if (pool_key_phrase === undefined) return pushToast("Please join a pool before");
 
     pushToast("Downloading... (might take a long time)", ToastDuration.LONG);
-    const { succeed } = await HandleGetFilesAndSave(files_to_download, pool_key_phrase);
+    const { succeed } = await ApiClient.HandleGetFilesAndSave(files_to_download, pool_key_phrase);
 
     if (succeed) pushToast("Downloaded successfully");
     else pushToast("Failed to download all files");
@@ -92,12 +97,13 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
 
     const _innerFetch = async () => {
       const fetchFromApi = async () => {
-        const { succeed: apiSuccess, data: apiData } = await ApiClient.get(
+        const { succeed: apiSuccess, data: apiData } = await ApiClient.Get(
           "/files/info?files_ids={files_ids}",
           undefined,
           {
             files_ids: transfer.files_id,
-          }
+          },
+          undefined
         );
 
         success = apiSuccess;
@@ -166,10 +172,11 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
     if (device_id === undefined || pool_key_phrase === undefined)
       return pushToast("Please join a pool before");
 
-    const { succeed } = await ApiClient.delete(
-      "/file-transfer/{pool_kp}/{device_id}/{transfer_id}",
-      { device_id, pool_kp: pool_key_phrase, transfer_id: transfer._id },
-      undefined
+    const { succeed } = await ApiClient.Delete(
+      "/file-transfer/{device_id}/{transfer_id}",
+      { device_id, transfer_id: transfer._id },
+      undefined,
+      { pool_kp: pool_key_phrase }
     );
 
     if (succeed) {

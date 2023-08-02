@@ -75,10 +75,10 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
     if (!IsArgsOk()) return pushToast("Invalid arguments");
     const [SyncCodeCopy, DeviceNameCopy] = [`${SyncCode}`, `${DeviceName}`];
 
-    let { succeed, data, reason } = await ApiClient.put(
-      "/pool/{pool_kp}/join",
-      { pool_kp: SyncCodeCopy },
-      { device_id, device_name: DeviceNameCopy }
+    let { succeed, data, reason } = await ApiClient.Put(
+      "/pool/join",
+      { device_id, device_name: DeviceNameCopy },
+      { pool_kp: SyncCodeCopy }
     );
 
     if (!succeed && reason === "AlreadyInPool") {
@@ -86,13 +86,7 @@ const Join: React.FC<JoinNavigationProps> = ({ navigation, route }) => {
         succeed: getSuccess,
         data: PoolData,
         reason,
-      } = await ApiClient.get(
-        "/pool/{pool_kp}",
-        {
-          pool_kp: SyncCodeCopy,
-        },
-        undefined
-      );
+      } = await ApiClient.Get("/pool", undefined, undefined, { pool_kp: SyncCodeCopy });
 
       if (!getSuccess || !PoolData)
         return pushToast(reason ?? "Couldn't retrieve pool datas, try again", ToastDuration.LONG);

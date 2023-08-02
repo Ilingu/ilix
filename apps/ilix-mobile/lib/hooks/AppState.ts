@@ -317,12 +317,11 @@ const useAppState = (): AppStateShape => {
       if (poolState.pools?.pools.length === 1) {
         if (authState.pool_key_phrase === undefined) return { succeed: false };
 
-        const { succeed: leave_ok } = await ApiClient.delete(
-          "/pool/{pool_kp}/leave",
-          {
-            pool_kp: authState.pool_key_phrase,
-          },
-          { device_id: authState.device_id }
+        const { succeed: leave_ok } = await ApiClient.Delete(
+          "/pool/leave",
+          undefined,
+          { device_id: authState.device_id },
+          { pool_kp: authState.pool_key_phrase }
         );
         if (!leave_ok) return { succeed: false };
 
@@ -345,12 +344,11 @@ const useAppState = (): AppStateShape => {
       const { succeed, data: pool_key_phrase } = await SS_Get<string>(pool.SS_key_hashed_kp);
       if (!succeed || typeof pool_key_phrase !== "string") return { succeed: false };
 
-      const { succeed: leave_ok } = await ApiClient.delete(
-        "/pool/{pool_kp}/leave",
-        {
-          pool_kp: pool_key_phrase,
-        },
-        { device_id: authState.device_id }
+      const { succeed: leave_ok } = await ApiClient.Delete(
+        "/pool/leave",
+        undefined,
+        { device_id: authState.device_id },
+        { pool_kp: pool_key_phrase }
       );
       if (!leave_ok) return { succeed: false };
 
@@ -364,20 +362,17 @@ const useAppState = (): AppStateShape => {
     3. this function is called to refresh the pool data
     so all the currently loaded datas correspond to the pool to refresh 
     */
+      const authState = { ...authStateRef.current };
       if (typeof authState.pool_key_phrase !== "string" || !IsCodeOk(authState.pool_key_phrase))
         return;
 
-      const { succeed, data, reason } = await ApiClient.get(
-        "/pool/{pool_kp}",
-        {
-          pool_kp: authState.pool_key_phrase,
-        },
-        undefined
-      );
+      const { succeed, data, reason } = await ApiClient.Get("/pool", undefined, undefined, {
+        pool_kp: authState.pool_key_phrase,
+      });
 
-      if (!succeed && reason === "PoolNotFound" && authStateRef.current.logOut) {
+      if (!succeed && reason === "PoolNotFound" && authState.logOut) {
         pushToast("This pool no longer exists, logging out...", ToastDuration.LONG);
-        return await authStateRef.current.logOut();
+        return await authState.logOut();
       }
 
       if (!succeed || !data) return;
@@ -417,13 +412,13 @@ const useAppState = (): AppStateShape => {
       )
         return { succeed: false };
 
-      const { succeed, data, reason } = await ApiClient.get(
-        "/file-transfer/{pool_kp}/{device_id}/all",
+      const { succeed, data, reason } = await ApiClient.Get(
+        "/file-transfer/{device_id}/all",
         {
-          pool_kp: authStateCopy.pool_key_phrase,
           device_id: authStateCopy.device_id,
         },
-        undefined
+        undefined,
+        { pool_kp: authStateCopy.pool_key_phrase }
       );
       if (!succeed || data === undefined || data.length === 0) return { succeed: false, reason };
       if (!data.every((d) => "_id" in d && "to" in d && "from" in d && "files_id" in d))

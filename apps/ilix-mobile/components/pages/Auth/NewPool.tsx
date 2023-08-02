@@ -34,15 +34,16 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({ navigation }: NewPoolNaviga
     if (!IsArgsOk()) return pushToast("Invalid arguments");
     const [DeviceNameCopy, PoolNameCopy] = [`${DeviceName}`, `${PoolName}`];
 
+    const payload = {
+      device_id,
+      device_name: DeviceNameCopy,
+      name: PoolNameCopy,
+    };
     const {
       succeed,
       data: pool_kp,
       reason,
-    } = await ApiClient.post("/pool/new", undefined, undefined, {
-      device_id,
-      device_name: DeviceNameCopy,
-      name: PoolNameCopy,
-    });
+    } = await ApiClient.Post("/pool/new", undefined, payload, undefined);
     const err_msg = `Failed to join pool: ${reason ?? "error reason not specified"}`;
     if (!succeed || !pool_kp || IsEmptyString(pool_kp)) return pushToast(err_msg);
 

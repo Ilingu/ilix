@@ -1,6 +1,7 @@
+import uuid from "react-native-uuid";
 import { SERVER_BASE_URL } from "./ApiClient";
 import type { DevicesPool, FilePoolTransfer, FunctionResult } from "./types/interfaces";
-import { GenerateUuid, IsCodeOk, IsEmptyString } from "./utils";
+import { IsCodeOk, IsEmptyString } from "./utils";
 import EventSource from "react-native-sse";
 
 type Events = "on_pool" | "on_transfer" | "on_logout" | "onerror" | "onclosed";
@@ -48,8 +49,8 @@ export default class SSEClient {
     if (IsEmptyString(device_id) || !IsCodeOk(key_phrase)) return { succeed: false };
 
     const sse_connection = new EventSource<CustomEvents>(
-      `${SERVER_BASE_URL}/events?device_id=${device_id}&key_phrase=${key_phrase}`,
-      {}
+      `${SERVER_BASE_URL}/events?device_id=${device_id}`,
+      { headers: { Authorization: key_phrase } }
     );
 
     const { succeed, reason } = await new Promise<FunctionResult>((res) => {
@@ -121,7 +122,7 @@ export default class SSEClient {
   }
 
   public addEventListener<T extends Events>(event: T, cb: callbackFn<T>): string {
-    const id = GenerateUuid();
+    const id = uuid.v4() as string;
     switch (event) {
       case "on_pool":
         this.poolListeners[id] = cb as callbackFn<"on_pool">;
