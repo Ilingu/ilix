@@ -4,7 +4,7 @@ use std::{env, fs};
 
 use rand::Rng;
 
-use crate::app::ServerErrors;
+use super::{errors::ServerErrors, hash};
 
 pub const KEY_PHRASE_LEN: usize = 20;
 
@@ -89,7 +89,7 @@ impl KeyPhrase {
 
         let mut result = self.0.clone();
         for _ in 0..hash_round {
-            result = super::hash(result);
+            result = hash(result);
         }
         Ok(result)
     }

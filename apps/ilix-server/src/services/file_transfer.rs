@@ -8,10 +8,10 @@ use uuid::Uuid;
 
 use crate::db::collections::FileStorageGridFS;
 use crate::services::BAD_ARGS_RESP;
+use crate::utils::errors::ServerErrors;
 use crate::utils::keyphrase::KeyPhrase;
 use crate::utils::sse::{Broadcaster, SSEData};
 use crate::{
-    app::ServerErrors,
     db::{collections::FilePoolTransferCollection, IlixDB},
     utils::is_str_empty,
 };

@@ -7,12 +7,9 @@ use futures_util::future;
 use parking_lot::Mutex;
 use tokio::task;
 
-use crate::{
-    app::ServerErrors,
-    db::models::{DevicesPool, FilePoolTransferExt},
-};
+use crate::db::models::{DevicesPool, FilePoolTransferExt};
 
-use super::{hash, keyphrase::KeyPhrase};
+use super::{errors::ServerErrors, hash, keyphrase::KeyPhrase};
 
 #[derive(serde::Serialize, Clone)]
 pub enum SSEData {

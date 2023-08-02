@@ -2,10 +2,10 @@ use actix_web::{delete, get, http::StatusCode, post, put, web, Responder};
 use serde::Deserialize;
 
 use crate::{
-    app::ServerErrors,
     db::{collections::DevicePoolsCollection, IlixDB},
     services::BAD_ARGS_RESP,
     utils::{
+        errors::ServerErrors,
         is_str_empty,
         keyphrase::KeyPhrase,
         sse::{Broadcaster, SSEData},

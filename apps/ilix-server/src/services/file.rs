@@ -6,13 +6,12 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-    app::ServerErrors,
     db::{
         collections::{FilePoolTransferCollection, FileStorageGridFS},
         IlixDB,
     },
     services::BAD_ARGS_RESP,
-    utils::{is_str_empty, keyphrase::KeyPhrase},
+    utils::{errors::ServerErrors, is_str_empty, keyphrase::KeyPhrase},
 };
 
 use super::ResponsePayload;

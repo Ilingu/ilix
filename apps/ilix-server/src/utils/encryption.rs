@@ -2,9 +2,7 @@ use anyhow::Result;
 use chacha20poly1305::{aead::Aead, AeadCore, Key, KeyInit, XChaCha20Poly1305};
 use rand::rngs::OsRng;
 
-use crate::app::ServerErrors;
-
-use super::hash;
+use super::{errors::ServerErrors, hash};
 
 fn hash_key(key: &str) -> String {
     let hashed_key = hash(key);

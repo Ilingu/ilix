@@ -14,10 +14,10 @@ use tokio::task;
 use tokio_stream::StreamExt;
 
 use crate::{
-    app::ServerErrors,
     services::pool::NewPoolPayload,
     utils::{
         encryption::{decrypt_datas, encrypt_datas},
+        errors::ServerErrors,
         keyphrase::{KeyPhrase, KEY_PHRASE_LEN},
         TrimObjectId,
     },

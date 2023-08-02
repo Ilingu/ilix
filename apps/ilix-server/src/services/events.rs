@@ -3,10 +3,9 @@ use actix_web_lab::sse::ChannelStream;
 use serde::Deserialize;
 
 use crate::{
-    app::ServerErrors,
     db::{collections::DevicePoolsCollection, IlixDB},
     services::BAD_ARGS_RESP,
-    utils::{keyphrase::KeyPhrase, sse::Broadcaster},
+    utils::{errors::ServerErrors, keyphrase::KeyPhrase, sse::Broadcaster},
 };
 
 use super::ResponsePayload;

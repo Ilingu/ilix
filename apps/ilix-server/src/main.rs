@@ -1,12 +1,9 @@
-mod app;
 mod db;
 mod services;
 mod utils;
 
-use std::sync::Arc;
-
 use actix_web::{middleware::Logger, web, App, HttpServer};
-use app::AppState;
+use anyhow::Result;
 use db::{
     collections::{DevicePoolsCollection, FilePoolTransferCollection},
     IlixDB,
@@ -19,13 +16,14 @@ use services::{
     files::get_files_info,
     pool::{delete_pool, get_pool, join_pool, leave_pool, new_pool},
 };
-use utils::{console_log, sse::Broadcaster};
+use std::env;
+use std::sync::Arc;
+use utils::{console_log, is_prod, sse::Broadcaster};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().expect("Couldn't load env variables");
-    let app = AppState::new();
-    let srv_addr = app.get_server_addr().expect("Couldn't get server addr");
+    let srv_addr = get_server_addr().expect("Couldn't get server addr");
 
     // db connection
     let db = IlixDB::connect()
@@ -85,4 +83,12 @@ async fn main() -> std::io::Result<()> {
     .bind(srv_addr)?
     .run()
     .await
+}
+
+pub fn get_server_addr() -> Result<(&'static str, u16)> {
+    let port = env::var("PORT")?.parse::<u16>()?;
+    Ok(match is_prod() {
+        true => ("0.0.0.0", port),
+        false => ("127.0.0.1", port),
+    })
 }

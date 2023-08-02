@@ -1,4 +1,5 @@
 pub mod encryption;
+pub mod errors;
 pub mod keyphrase;
 pub mod sse;
 

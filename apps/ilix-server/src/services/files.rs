@@ -5,9 +5,9 @@ use mongodb::bson::oid::ObjectId;
 use serde::{de, Deserialize};
 
 use crate::{
-    app::ServerErrors,
     db::{collections::FileStorageGridFS, IlixDB},
     services::BAD_ARGS_RESP,
+    utils::errors::ServerErrors,
 };
 
 use super::ResponsePayload;
