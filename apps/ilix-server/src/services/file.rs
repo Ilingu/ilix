@@ -70,14 +70,18 @@ async fn get_file(
 }
 
 #[delete("/{file_id}")]
-async fn delete_file(db: web::Data<IlixDB>, file_id: web::Path<String>) -> impl Responder {
+async fn delete_file(
+    db: web::Data<IlixDB>,
+    file_id: web::Path<String>,
+    key_phrase: KeyPhrase,
+) -> impl Responder {
     if is_str_empty(&file_id) {
         return BAD_ARGS_RESP.clone();
     }
 
-    let db_result = db.client.remove_transfer_file(&file_id).await;
+    let db_result = db.client.remove_transfer_file(&file_id, &key_phrase).await;
     if let Err(err) = db_result {
-        if err != ServerErrors::NotInTransfer && err != ServerErrors::TransferNotFound {
+        if err != ServerErrors::NotInTransfer {
             return ResponsePayload::new(
                 false,
                 &(),

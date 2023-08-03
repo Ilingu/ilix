@@ -4,15 +4,20 @@ pub mod file_transfer;
 pub mod files;
 pub mod pool;
 
-use std::fmt::Display;
+use std::{fmt::Display, io::Read};
 
+use actix_multipart::Multipart;
 use actix_web::{
     body::BoxBody,
     http::{header::ContentType, StatusCode},
+    web::Buf,
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder, ResponseError,
 };
+use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use serde::Serialize;
+use tokio_stream::StreamExt;
+use uuid::Uuid;
 
 static BAD_ARGS_RESP: Lazy<ResponsePayload> = Lazy::new(|| {
     ResponsePayload::new(
@@ -101,4 +106,28 @@ impl ResponseError for ResponsePayload {
             .content_type(ContentType::json())
             .json(self)
     }
+}
+
+pub async fn from_multipart(mut form: Multipart) -> Result<Vec<(String, Vec<u8>)>> {
+    let mut files = vec![];
+    // iterate over multipart stream
+    while let Some(mut field) = form.try_next().await.map_err(|_| anyhow!(""))? {
+        // A multipart/form-data stream has to contain `content_disposition`
+
+        let mut file_buf = vec![];
+        // Field in turn is stream of *Bytes* object
+        while let Some(chunk) = field.try_next().await.map_err(|_| anyhow!(""))? {
+            let mut reader = chunk.reader();
+            let _ = reader.read_to_end(&mut file_buf);
+        }
+
+        let filename = field
+            .content_disposition()
+            .get_filename()
+            .unwrap_or(&Uuid::new_v4().to_string())
+            .to_string();
+
+        files.push((filename, file_buf));
+    }
+    Ok(files)
 }

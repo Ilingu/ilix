@@ -1,7 +1,7 @@
 mod db;
+mod extractors;
 mod services;
 mod utils;
-mod extractors;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use anyhow::Result;

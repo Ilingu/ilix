@@ -1,13 +1,5 @@
-use actix_multipart::Multipart;
-use actix_web::web::Buf;
-use actix_web::{delete, get, http::StatusCode, post, web, Responder};
-use serde::Deserialize;
-use std::io::prelude::*;
-use tokio_stream::StreamExt;
-use uuid::Uuid;
-
 use crate::db::collections::FileStorageGridFS;
-use crate::services::BAD_ARGS_RESP;
+use crate::services::{from_multipart, BAD_ARGS_RESP};
 use crate::utils::errors::ServerErrors;
 use crate::utils::keyphrase::KeyPhrase;
 use crate::utils::sse::{Broadcaster, SSEData};
@@ -15,6 +7,10 @@ use crate::{
     db::{collections::FilePoolTransferCollection, IlixDB},
     utils::is_str_empty,
 };
+
+use actix_multipart::Multipart;
+use actix_web::{delete, get, http::StatusCode, post, web, Responder};
+use serde::Deserialize;
 
 use super::ResponsePayload;
 
@@ -41,25 +37,62 @@ struct AddTransferPayload {
     to: String,
 }
 
-/// create_transfer only create an empty transfer object in db, client must call `add_files_to_transfer` afterhand to attach files to the transfer
-#[post("/new")]
+#[post("")]
 async fn create_transfer(
     db: web::Data<IlixDB>,
-    query: web::Query<AddTransferPayload>,
+    sse: web::Data<Broadcaster>,
     key_phrase: KeyPhrase,
+    query: web::Query<AddTransferPayload>,
+    form: Multipart,
 ) -> impl Responder {
     if is_str_empty(&query.to) || is_str_empty(&query.from) {
         return BAD_ARGS_RESP.clone();
     }
 
+    // parse request files
+    let bad_file_resp = ResponsePayload::new(
+        false,
+        &(),
+        Some(StatusCode::BAD_REQUEST),
+        Some("Failed to parse file".to_string()),
+    );
+
+    let files = match from_multipart(form).await {
+        Ok(files) => files,
+        Err(_) => return bad_file_resp,
+    };
+    if files.is_empty() {
+        return bad_file_resp;
+    }
+
+    // add files to db
+    let files_id = match db.client.add_files(files, &key_phrase).await {
+        Ok(files_ids) => files_ids,
+        Err(err) => return ResponsePayload::new(false, &(), None, Some(err.to_string())),
+    };
+
+    // create transfer with files ids
     let db_result = db
         .client
-        .create_transfer(&key_phrase, &query.from, &query.to)
+        .create_transfer(&key_phrase, &query.from, &query.to, &files_id)
         .await;
 
     match db_result {
-        Ok(datas) => ResponsePayload::new(true, &datas, None, None),
+        Ok(transfer) => {
+            let t_id = transfer._id.clone();
+            tokio::spawn(async move {
+                let _ = sse
+                    .broadcast_to(
+                        &[query.to.to_owned()],
+                        &key_phrase,
+                        SSEData::Transfer(transfer),
+                    )
+                    .await;
+            });
+            ResponsePayload::new(true, &t_id, None, None)
+        }
         Err(err) => {
+            let _ = db.client.delete_files(&files_id).await; // failed to create transfer, delete all added files
             let err_status_code = match err {
                 ServerErrors::NotInPool => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -76,7 +109,7 @@ async fn add_files_to_transfer(
     sse: web::Data<Broadcaster>,
     key_phrase: KeyPhrase,
     transfer_id: web::Path<String>,
-    mut form: Multipart,
+    form: Multipart,
 ) -> impl Responder {
     if is_str_empty(&transfer_id) {
         return BAD_ARGS_RESP.clone();
@@ -89,47 +122,22 @@ async fn add_files_to_transfer(
         Some("Failed to parse file".to_string()),
     );
 
-    let mut files = vec![];
-    // iterate over multipart stream
-    while let Some(mut field) = match form.try_next().await {
-        Ok(data) => data,
+    // parse request files
+    let files = match from_multipart(form).await {
+        Ok(files) => files,
         Err(_) => return bad_file_resp,
-    } {
-        // A multipart/form-data stream has to contain `content_disposition`
-
-        let mut file_buf = vec![];
-        // Field in turn is stream of *Bytes* object
-        while let Some(chunk) = match field.try_next().await {
-            Ok(data) => data,
-            Err(_) => return bad_file_resp,
-        } {
-            let mut reader = chunk.reader();
-            let _ = reader.read_to_end(&mut file_buf);
-        }
-
-        let filename = field
-            .content_disposition()
-            .get_filename()
-            .unwrap_or(&Uuid::new_v4().to_string())
-            .to_string();
-
-        files.push((filename, file_buf));
-    }
-
+    };
     if files.is_empty() {
-        return ResponsePayload::new(
-            false,
-            &(),
-            Some(StatusCode::BAD_REQUEST),
-            Some("Error when parsing files".to_string()),
-        );
+        return bad_file_resp;
     }
 
+    // add files to db
     let files_id = match db.client.add_files(files, &key_phrase).await {
         Ok(fids) => fids,
         Err(err) => return ResponsePayload::new(false, &(), None, Some(err.to_string())),
     };
 
+    // add files to transfer
     let db_result = db
         .client
         .add_files_to_transfer(&files_id, &transfer_id, &key_phrase)

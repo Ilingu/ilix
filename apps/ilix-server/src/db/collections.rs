@@ -1,5 +1,12 @@
-use std::{collections::HashMap, str::FromStr};
-
+use crate::{
+    services::pool::NewPoolPayload,
+    utils::{
+        encryption::{decrypt_datas, encrypt_datas},
+        errors::ServerErrors,
+        keyphrase::{KeyPhrase, KEY_PHRASE_LEN},
+        TrimObjectId,
+    },
+};
 use anyhow::Result;
 use async_trait::async_trait;
 use futures_util::future;
@@ -10,18 +17,9 @@ use mongodb::{
 };
 use mongodb_gridfs::{options::GridFSBucketOptions, GridFSBucket};
 use once_cell::sync::Lazy;
+use std::{collections::HashMap, str::FromStr};
 use tokio::task;
 use tokio_stream::StreamExt;
-
-use crate::{
-    services::pool::NewPoolPayload,
-    utils::{
-        encryption::{decrypt_datas, encrypt_datas},
-        errors::ServerErrors,
-        keyphrase::{KeyPhrase, KEY_PHRASE_LEN},
-        TrimObjectId,
-    },
-};
 
 use super::{
     models::{DevicesPool, FileInfo, FilePoolTransfer, FilePoolTransferExt},
@@ -266,14 +264,19 @@ pub trait FilePoolTransferCollection {
         key_phrase: &KeyPhrase,
         from: &str,
         to: &str,
-    ) -> Result<String, ServerErrors>;
+        files_id: &[String],
+    ) -> Result<FilePoolTransferExt, ServerErrors>;
     async fn add_files_to_transfer(
         &self,
         files_id: &[String],
         transfer_id: &str,
         key_phrase: &KeyPhrase,
     ) -> Result<FilePoolTransferExt, ServerErrors>;
-    async fn remove_transfer_file(&self, file_id: &str) -> Result<(), ServerErrors>;
+    async fn remove_transfer_file(
+        &self,
+        file_id: &str,
+        key_phrase: &KeyPhrase,
+    ) -> Result<(), ServerErrors>;
     async fn delete_transfer(
         &self,
         key_phrase: &KeyPhrase,
@@ -330,14 +333,15 @@ impl FilePoolTransferCollection for Client {
         key_phrase: &KeyPhrase,
         from: &str,
         to: &str,
-    ) -> Result<String, ServerErrors> {
+        files_id: &[String],
+    ) -> Result<FilePoolTransferExt, ServerErrors> {
         let hashed_kp = key_phrase.hash()?;
         let data_to_insert = FilePoolTransfer {
             _id: ObjectId::new(), // no matter, this won't get serialized
             pool_hashed_key_phrase: hashed_kp,
             to: to.to_owned(),
             from: from.to_owned(),
-            files_id: vec![],
+            files_id: files_id.to_vec(),
         };
 
         let pool = self.get_pool(key_phrase).await?;
@@ -353,7 +357,13 @@ impl FilePoolTransferCollection for Client {
             .insert_one(data_to_insert.clone(), None)
             .await
             .map_err(|_| ServerErrors::MongoError)?;
-        Ok(set_report.inserted_id.to_string().trim_object_id())
+        Ok(FilePoolTransferExt {
+            _id: set_report.inserted_id.to_string().trim_object_id(),
+            pool_hashed_key_phrase: data_to_insert.pool_hashed_key_phrase,
+            to: data_to_insert.to,
+            from: data_to_insert.from,
+            files_id: data_to_insert.files_id,
+        })
     }
 
     async fn add_files_to_transfer(
@@ -399,23 +409,38 @@ impl FilePoolTransferCollection for Client {
         Ok(updated_doc)
     }
 
-    async fn remove_transfer_file(&self, file_id: &str) -> Result<(), ServerErrors> {
-        let update_report = self
+    async fn remove_transfer_file(
+        &self,
+        file_id: &str,
+        key_phrase: &KeyPhrase,
+    ) -> Result<(), ServerErrors> {
+        let hashed_kp = key_phrase.hash()?;
+        let after_update = self
             .database(DB_NAME)
             .collection::<FilePoolTransfer>(FILE_TRANSFER_COLL)
-            .update_one(
-                doc! {"files_id": file_id},
+            .find_one_and_update(
+                doc! {"pool_hashed_key_phrase": hashed_kp, "files_id": file_id},
                 doc! {"$pull" : {"files_id": file_id}},
-                None,
+                Some(
+                    FindOneAndUpdateOptions::builder()
+                        .return_document(Some(ReturnDocument::After))
+                        .build(),
+                ),
             )
             .await
-            .map_err(|_| ServerErrors::MongoError)?;
-        if update_report.matched_count == 0 {
-            return Err(ServerErrors::TransferNotFound);
-        }
-        if update_report.modified_count == 0 {
+            .map_err(|_| ServerErrors::MongoError)?
+            .ok_or(ServerErrors::TransferNotFound)?;
+
+        if after_update.files_id.contains(&file_id.to_string()) {
             return Err(ServerErrors::NotInTransfer);
         }
+        if after_update.files_id.is_empty() {
+            return self
+                .delete_transfer(key_phrase, &after_update.to, &after_update._id.to_string())
+                .await
+                .map(|_| ());
+        }
+
         Ok(())
     }
 

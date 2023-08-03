@@ -3,11 +3,11 @@ pub mod errors;
 pub mod keyphrase;
 pub mod sse;
 
-use std::env;
-
+use async_trait::async_trait;
 use hex_string::HexString;
 use log::{debug, error, info, log_enabled, trace, warn, Level};
 use sha3::{Digest, Sha3_256};
+use std::env;
 
 pub fn hash<T: Into<String>>(msg: T) -> String {
     let mut hasher = Sha3_256::new();
@@ -49,4 +49,11 @@ impl TrimObjectId for String {
             .trim_end_matches("\")")
             .to_string()
     }
+}
+
+#[async_trait]
+pub trait AsyncTryFrom<T>: Sized + Send {
+    type Error;
+
+    async fn async_tryfrom(value: T) -> Result<Self, Self::Error>;
 }
