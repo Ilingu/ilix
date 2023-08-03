@@ -4,7 +4,7 @@ mod services;
 mod tests;
 mod utils;
 
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpResponse, HttpServer};
 use anyhow::Result;
 use db::{
     collections::{DevicePoolsCollection, FilePoolTransferCollection},
@@ -62,6 +62,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(db.clone()))
             .app_data(web::Data::from(Arc::clone(&see_broadcaster)))
             // services
+            .route(
+                "/ping",
+                web::get().to(|| async { HttpResponse::Ok().body("pong") }),
+            )
             .service(
                 web::scope("/pool")
                     .service(new_pool)

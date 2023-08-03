@@ -1,5 +1,3 @@
-use actix_multipart::form::bytes;
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -37,10 +35,12 @@ mod tests {
     };
     use serde::{de, Deserialize};
     use serde_json::json;
+    use tokio::join;
 
     #[derive(Deserialize)]
     struct ResponsePayload {
         success: bool,
+        #[allow(dead_code)]
         status_code: u16,
         reason: Option<String>,
         data: Option<String>,
@@ -57,6 +57,18 @@ mod tests {
 
     #[actix_web::test]
     async fn test_full_api() {
+        {
+            let res = reqwest::blocking::get("http://localhost:3000/ping")
+                .expect("This server should be launched before tests");
+            let fetch_res = res
+                .text()
+                .expect("This server should be launched before tests");
+            assert_eq!(
+                fetch_res, "pong",
+                "This server should be launched before tests"
+            );
+        }
+
         dotenv::dotenv().expect("Couldn't load env variables");
 
         // db connection
@@ -113,6 +125,7 @@ mod tests {
             exec_get_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
             exec_join_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
             exec_leave_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
+            exec_create_transfer("not valid kp", Some("InvalidKeyPhrase")).await;
         }
 
         // PoolNotFound tests
@@ -121,6 +134,7 @@ mod tests {
             exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await;
             exec_join_pool(&app, &pool_kp, Some("PoolNotFound")).await;
             exec_leave_pool(&app, &pool_kp, Some("PoolNotFound")).await;
+            exec_create_transfer(&pool_kp, Some("PoolNotFound")).await;
         }
 
         // check that no transfer exists
@@ -149,7 +163,29 @@ mod tests {
         }
 
         exec_join_pool(&app, &pool_kp, None).await; // must have two user in pool for next tests
-        exec_create_transfer(&app, &pool_kp, None).await;
+
+        let transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
+        {
+            let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
+
+            assert!(!transfers.is_empty());
+            assert!(transfers.iter().any(|t| t._id == transfer_id));
+            assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
+        }
+
+        let added_files_ids = exec_add_files_to_transfer(&pool_kp, &transfer_id, None)
+            .await
+            .unwrap();
+
+        let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
+        assert!(!transfers.is_empty());
+        assert!(transfers.iter().any(|t| t._id == transfer_id));
+        assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
+
+        let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+        assert!(added_files_ids
+            .iter()
+            .all(|file_id| added_transfer.files_id.contains(file_id)));
     }
 
     async fn exec_new_pool<S, B>(app: &S) -> String
@@ -295,30 +331,59 @@ mod tests {
         transfers
     }
 
-    async fn exec_create_transfer<S, B>(
-        app: &S,
+    async fn exec_create_transfer(
         pool_kp: &str,
         should_error: Option<&'static str>,
-    ) -> Option<String>
-    where
-        S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
-        B: MessageBody,
-    {
-        let req = test::TestRequest::post()
-            .uri("/file-transfer/ilingu/all?from=bliwox&to=ilingu")
-            .append_header((
-                HeaderName::from_static("authorization"),
-                HeaderValue::from_str(pool_kp).unwrap(),
-            ))
-            .append_header((
-                HeaderName::from_static("content-type"),
-                HeaderValue::from_static("multipart/form-data; boundary=X-ILIX-BOUNDARY"),
-            ))
-            .set_payload("test")
-            .to_request();
+    ) -> Option<String> {
+        let form = reqwest::blocking::multipart::Form::new()
+            .file("test1.jpg", "./src/tests/Assets/test1.jpg")
+            .unwrap()
+            .file("test2.txt", "./src/tests/Assets/test2.txt")
+            .unwrap();
 
-        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
+        println!("here");
+        let client = reqwest::blocking::Client::new();
+        let res = client
+            .post("http://localhost:3000/file-transfer/ilingu/all?from=bliwox&to=ilingu")
+            .header("authorization", pool_kp)
+            .multipart(form)
+            .send()
+            .unwrap();
+        let resp = res.json::<ResponsePayload>().unwrap();
         let transfers_id = resp.parse_data::<String>().unwrap();
+        match should_error {
+            Some(err) => {
+                assert!(!resp.is_ok());
+                assert_eq!(resp.reason.as_ref().unwrap(), err);
+                return None;
+            }
+            None => assert!(resp.is_ok()),
+        }
+        assert!(!transfers_id.is_empty());
+
+        println!("->> Transfers created");
+        Some(transfers_id)
+    }
+    async fn exec_add_files_to_transfer(
+        pool_kp: &str,
+        transfer_id: &str,
+        should_error: Option<&'static str>,
+    ) -> Option<Vec<String>> {
+        let form = reqwest::blocking::multipart::Form::new()
+            .file("test3.mp3", "./src/tests/Assets/test3.mp3")
+            .unwrap();
+
+        let client = reqwest::blocking::Client::new();
+        let res = client
+            .post(format!(
+                "http://localhost:3000/file-transfer/{transfer_id}/add_files"
+            ))
+            .header("authorization", pool_kp)
+            .multipart(form)
+            .send()
+            .unwrap();
+        let resp = res.json::<ResponsePayload>().unwrap();
+        let transfers_id = resp.parse_data::<Vec<String>>().unwrap();
         match should_error {
             Some(err) => {
                 assert!(!resp.is_ok());
