@@ -1162,6 +1162,7 @@ name = "ilix_server"
 version = "0.1.0"
 dependencies = [
  "actix-files",
+ "actix-http",
  "actix-multipart",
  "actix-web",
  "actix-web-lab",
