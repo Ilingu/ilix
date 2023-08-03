@@ -30,7 +30,8 @@ export type HomeNestedStack = {
     transfer_id: string;
   };
   AddFiles: {
-    transfer_id: string;
+    device_id_from: string;
+    device_id_to: string;
     pool_kp: string;
   };
 };

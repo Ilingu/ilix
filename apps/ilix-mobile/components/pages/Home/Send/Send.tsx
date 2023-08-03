@@ -12,7 +12,6 @@ import ProfilePicture from "../../../design/ProfilePicture";
 import AuthContext from "../../../../lib/Context/Auth";
 import Separator from "../../../design/Separator";
 import { pushToast } from "../../../../lib/utils";
-import ApiClient from "../../../../lib/ApiClient";
 
 type SendNavigationProps = NativeStackScreenProps<HomeNestedStack, "send">;
 const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {
@@ -24,15 +23,11 @@ const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {
       if (pool_key_phrase === undefined || device_id === undefined)
         return pushToast("Join a pool before");
 
-      const { succeed: createSuccess, data: transfer_id } = await ApiClient.Post(
-        "/file-transfer/new?from={from}&to={to}",
-        { from: device_id, to: did_to },
-        undefined,
-        { pool_kp: pool_key_phrase }
-      );
-      if (!createSuccess || typeof transfer_id !== "string")
-        return pushToast("Failed to create transfer");
-      navigation.push("AddFiles", { transfer_id, pool_kp: `${pool_key_phrase}` });
+      navigation.push("AddFiles", {
+        device_id_to: did_to,
+        device_id_from: device_id,
+        pool_kp: `${pool_key_phrase}`,
+      });
     },
     [pool_key_phrase, device_id, navigation]
   );

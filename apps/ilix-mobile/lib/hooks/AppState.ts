@@ -18,9 +18,6 @@ interface AppStateShape {
 }
 
 const useAppState = (): AppStateShape => {
-  //#region : SSE State
-  //#endregion
-
   //#region : Auth State
   const [authState, setAuthState] = useState<AuthShape>({
     cascading_update: true,
@@ -169,8 +166,6 @@ const useAppState = (): AppStateShape => {
 
           return [l, s, newTransfers, refresh];
         });
-
-        console.log({ updated_transfer });
       });
       sse_handler.addEventListener("on_logout", () => {
         pushToast("This pool has been deleted");
@@ -224,11 +219,22 @@ const useAppState = (): AppStateShape => {
       with_CC_update = false
     ): Promise<FunctionResult> => {
       const curState = { ...poolStateRef.current };
+
+      // if this is not undefined, it means the user has joined a pool is already in, so it's just a normal login
+      // but we want to replace the old value by the new in case of user renaming it's "device_name"
+      const alreadyInPoolIndex = curState.pools?.pools.findIndex(
+        ({ SS_key_hashed_kp }) => SS_key_hashed_kp === pool.SS_key_hashed_kp
+      );
+      const isAlreadyInPool = alreadyInPoolIndex !== undefined && alreadyInPoolIndex > -1;
+      if (isAlreadyInPool) curState.pools?.pools.splice(alreadyInPoolIndex, 1, pool);
+
       const newState: PoolCtxShape = {
         ...curState,
         pools: {
-          current_index: 0,
-          pools: [pool, ...(curState.pools?.pools ?? [])],
+          current_index: isAlreadyInPool ? alreadyInPoolIndex : 0,
+          pools: isAlreadyInPool
+            ? curState.pools?.pools ?? []
+            : [pool, ...(curState.pools?.pools ?? [])],
           get current() {
             return this.pools[this.current_index];
           },

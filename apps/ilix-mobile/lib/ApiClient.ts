@@ -6,7 +6,7 @@ import type {
   FunctionResult,
   ServerResponse,
 } from "./types/interfaces";
-import { IsEmptyString, blobToBase64 } from "./utils";
+import { blobToBase64 } from "./utils";
 
 // Get
 type GetRoutes = "/pool" | "/file-transfer/{device_id}/all" | "/files/info?files_ids={files_ids}";
@@ -28,11 +28,19 @@ type GetReturns<T extends GetRoutes> = T extends "/pool"
   : never;
 
 // Post
-type PostRoutes = "/pool/new" | "/file-transfer/new?from={from}&to={to}";
-type PostQuery<T extends PostRoutes> = T extends "/file-transfer/new?from={from}&to={to}"
+type PostRoutes =
+  | "/pool/new"
+  | "/file-transfer?from={from}&to={to}"
+  | "/file-transfer/{transfer_id}/add_files";
+type PostPath<T extends PostRoutes> = T extends "/file-transfer/{transfer_id}/add_files"
+  ? { transfer_id: string }
+  : undefined;
+type PostQuery<T extends PostRoutes> = T extends "/file-transfer?from={from}&to={to}"
   ? { from: string; to: string }
   : undefined;
-type PostAuth<T extends PostRoutes> = T extends "/file-transfer/new?from={from}&to={to}"
+type PostAuth<T extends PostRoutes> = T extends
+  | "/file-transfer?from={from}&to={to}"
+  | "/file-transfer/{transfer_id}/add_files"
   ? { pool_kp: string }
   : undefined;
 type PostBody<T extends PostRoutes> = T extends "/pool/new"
@@ -41,11 +49,15 @@ type PostBody<T extends PostRoutes> = T extends "/pool/new"
       device_id: string;
       device_name: string;
     }
+  : T extends "/file-transfer?from={from}&to={to}" | "/file-transfer/{transfer_id}/add_files"
+  ? FormData
   : undefined;
 type PostReturns<T extends PostRoutes> = T extends "/pool/new"
   ? string
-  : T extends "/file-transfer/new?from={from}&to={to}"
+  : T extends "/file-transfer?from={from}&to={to}"
   ? string
+  : T extends "/file-transfer/{transfer_id}/add_files"
+  ? string[]
   : never;
 
 // Put
@@ -74,6 +86,7 @@ type DeleteAuth<T extends DeleteRoutes> = T extends
   | "/pool"
   | "/pool/leave"
   | "/file-transfer/{device_id}/{transfer_id}"
+  | "/file/{file_id}"
   ? { pool_kp: string }
   : undefined;
 type DeleteBody<T extends DeleteRoutes> = T extends "/pool/leave"
@@ -90,7 +103,7 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
   : never;
 
 export const SERVER_BASE_URL = (
-  process.env.NODE_ENV === "development" ? "https://44ef-193-32-126-236.ngrok-free.app" : ""
+  process.env.NODE_ENV === "development" ? "https://38af-193-32-126-236.ngrok-free.app" : ""
 ).replace(/\/+$/g, ""); // trim_matches_end of "/"
 
 namespace ApiClient {
@@ -105,19 +118,22 @@ namespace ApiClient {
     if (query) built_uri = build_uri(built_uri, query);
 
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
-    return await HandleRequest(call_url, "GET", undefined, auth); // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
+    return await HandleRequest(call_url, "GET", undefined, auth);
   }
   export async function Post<T extends PostRoutes>(
     route: T,
+    path: PostPath<T>,
     query: PostQuery<T>,
     body: PostBody<T>,
     auth: PostAuth<T>
   ): Promise<FunctionResult<PostReturns<T>>> {
     let built_uri = route as string;
+    if (path) built_uri = build_uri(built_uri, path);
     if (query) built_uri = build_uri(built_uri, query);
 
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
-    return await HandleRequest(call_url, "POST", body && JSON.stringify(body), auth); // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
+    const reqBody = body === undefined ? undefined : build_body(body);
+    return await HandleRequest(call_url, "POST", reqBody, auth);
   }
   export async function Put<T extends PutRoutes>(
     route: T,
@@ -125,7 +141,8 @@ namespace ApiClient {
     auth: PutAuth<T>
   ): Promise<FunctionResult<PutReturns<T>>> {
     const call_url = `${SERVER_BASE_URL}${route}`;
-    return await HandleRequest(call_url, "PUT", body && JSON.stringify(body), auth); // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!
+    const reqBody = body === undefined ? undefined : build_body(body);
+    return await HandleRequest(call_url, "PUT", reqBody, auth);
   }
   export async function Delete<T extends DeleteRoutes>(
     route: T,
@@ -137,12 +154,8 @@ namespace ApiClient {
     if (path) built_uri = build_uri(built_uri, path);
 
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
-    return await HandleRequest(
-      call_url,
-      "DELETE",
-      body && JSON.stringify(body), // this is cleaner but it has a lot of unexpected behavior, becareful me of the future!,
-      auth
-    );
+    const reqBody = body === undefined ? undefined : build_body(body);
+    return await HandleRequest(call_url, "DELETE", reqBody, auth);
   }
 
   export interface PickedFile {
@@ -181,59 +194,6 @@ namespace ApiClient {
      */
     output?: FileList | null;
   }
-
-  export const AddFilesToTransfer = async (
-    transfer_id: string,
-    key_phrase: string,
-    files: PickedFile[],
-    customMsg?: string
-  ): Promise<FunctionResult<string[]>> => {
-    try {
-      const formData = new FormData();
-      if (typeof customMsg === "string" && !IsEmptyString(customMsg))
-        formData.append("custom_message", customMsg);
-
-      for (const [i, { uri, name, mimeType }] of files.entries())
-        formData.append(`file-${i}`, { uri, name, type: mimeType } as unknown as string);
-
-      const response = await fetch(`${SERVER_BASE_URL}/file-transfer/${transfer_id}/add_files`, {
-        method: "POST",
-        headers: { Authorization: key_phrase, "Content-Type": "multipart/form-data" },
-        body: formData,
-      });
-
-      if (response.status !== 200)
-        return { succeed: false, reason: `status code (${response.status}) != 200` };
-
-      const respBody: ServerResponse<string> = await response.json();
-      if (!("success" in respBody) || !("status_code" in respBody) || !("data" in respBody))
-        return {
-          succeed: false,
-          reason: "wrong response type",
-        };
-      if (
-        typeof respBody.success !== "boolean" ||
-        typeof respBody.status_code !== "number" ||
-        typeof respBody.data !== "string"
-      )
-        return {
-          succeed: false,
-          reason: "wrong data type",
-        };
-      if (!respBody.success) return { succeed: false, reason: "Server set as failed" };
-
-      const filesIds: string[] = JSON.parse(respBody.data);
-      if (!Array.isArray(filesIds) || filesIds.length === 0)
-        return {
-          succeed: false,
-          reason: "expected non-empty string array; found something else",
-        };
-
-      return { succeed: true, data: filesIds };
-    } catch (error) {
-      return { succeed: false, reason: `${error}` };
-    }
-  };
 
   export const HandleGetFilesAndSave = async (
     files_to_download: [string, string][],
@@ -287,7 +247,7 @@ namespace ApiClient {
   const HandleRequest = async <T = never>(
     call_url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
-    body?: string,
+    body?: string | FormData,
     auth?: { pool_kp: string },
     is_no_body_ok = false,
     is_no_data_ok = false
@@ -344,6 +304,11 @@ namespace ApiClient {
         reason: `Client failed to send request to the server: ${e}}`,
       };
     }
+  };
+
+  const build_body = <T = any>(body: T | FormData): string | FormData => {
+    if (body instanceof FormData) return body;
+    else return JSON.stringify(body);
   };
 
   const build_uri = (uri: string, datas: object): string => {

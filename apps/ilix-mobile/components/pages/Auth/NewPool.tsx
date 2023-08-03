@@ -43,7 +43,7 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({ navigation }: NewPoolNaviga
       succeed,
       data: pool_kp,
       reason,
-    } = await ApiClient.Post("/pool/new", undefined, payload, undefined);
+    } = await ApiClient.Post("/pool/new", undefined, undefined, payload, undefined);
     const err_msg = `Failed to join pool: ${reason ?? "error reason not specified"}`;
     if (!succeed || !pool_kp || IsEmptyString(pool_kp)) return pushToast(err_msg);
 
@@ -56,7 +56,7 @@ const NewPool: React.FC<NewPoolNavigationProps> = ({ navigation }: NewPoolNaviga
           {
             devices_id: [device_id],
             pool_name: PoolNameCopy,
-            devices_id_to_name: { device_id: DeviceName },
+            devices_id_to_name: { [device_id]: DeviceName },
             SS_key_hashed_kp: MakeKeyPhraseKey(pool_kp),
           },
           false

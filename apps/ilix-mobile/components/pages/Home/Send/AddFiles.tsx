@@ -15,10 +15,12 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 
 type AddFilesNavigationProps = NativeStackScreenProps<HomeNestedStack, "AddFiles">;
 const AddFiles: React.FC<AddFilesNavigationProps> = ({ route }) => {
-  const { transfer_id, pool_kp } = route.params;
+  const { device_id_to, device_id_from, pool_kp } = route.params;
   const [files, setFiles] = useState<ApiClient.PickedFile[]>([]);
   const [CustomMsg, setCustomMsg] = useState("");
   const [OptionalMsg, setOptionalMsg] = useState(false);
+
+  const [transferId, setTransferId] = useState<null | string>(null);
 
   const addFile = async () => {
     const pickedFiles = await DocumentPicker.getDocumentAsync({
@@ -39,24 +41,65 @@ const AddFiles: React.FC<AddFilesNavigationProps> = ({ route }) => {
   );
 
   const disabled = files.length <= 0 && IsEmptyString(CustomMsg);
-  const SendFiles = async () => {
+  const SendAdditionalFiles = async () => {
+    if (disabled || transferId === null) return pushToast("There is nothing to send");
+    const CustomMsgCopy = `${CustomMsg}`;
+    const transferIdCopy = `${transferId}`;
+
+    const formData = new FormData();
+    if (!IsEmptyString(CustomMsgCopy)) formData.append("custom_message", CustomMsgCopy);
+    for (const [i, { uri, name, mimeType }] of files.entries())
+      formData.append(`file-${i}`, { uri, name, type: mimeType } as unknown as string);
+
+    const {
+      succeed: sentSuccess,
+      data: filesIds,
+      reason,
+    } = await ApiClient.Post(
+      "/file-transfer/{transfer_id}/add_files",
+      { transfer_id: transferIdCopy },
+      undefined,
+      formData,
+      { pool_kp }
+    );
+
+    if (!sentSuccess || !filesIds || !Array.isArray(filesIds) || filesIds.length <= 0)
+      return pushToast(`Failed to add files to transfer: ${reason}`, ToastDuration.LONG);
+    pushToast("Successfully added to transfer");
+    setFiles([]);
+    setOptionalMsg(false);
+    setCustomMsg("");
+  };
+
+  const CreateTransfer = async () => {
     if (disabled) return pushToast("There is nothing to send");
     const CustomMsgCopy = `${CustomMsg}`;
 
-    const { succeed: sentSuccess, reason } = await ApiClient.AddFilesToTransfer(
-      transfer_id,
-      pool_kp,
-      files,
-      !IsEmptyString(CustomMsgCopy) ? CustomMsgCopy : undefined
-    );
+    const formData = new FormData();
+    if (!IsEmptyString(CustomMsgCopy)) formData.append("custom_message", CustomMsgCopy);
+    for (const [i, { uri, name, mimeType }] of files.entries())
+      formData.append(`file-${i}`, { uri, name, type: mimeType } as unknown as string);
 
-    if (!sentSuccess) pushToast(`Failed add files to transfer: ${reason}`, ToastDuration.LONG);
-    else {
-      pushToast("Successfully sent");
-      setFiles([]);
-      setOptionalMsg(false);
-      setCustomMsg("");
-    }
+    const {
+      succeed: createSuccess,
+      data: transfer_id,
+      reason,
+    } = await ApiClient.Post(
+      "/file-transfer?from={from}&to={to}",
+      undefined,
+      { from: device_id_from, to: device_id_to },
+      formData,
+      { pool_kp }
+    );
+    if (!createSuccess || typeof transfer_id !== "string")
+      return pushToast("Failed to create transfer");
+
+    if (!createSuccess) return pushToast(`Failed create transfer: ${reason}`, ToastDuration.LONG);
+    pushToast("Successfully created");
+    setTransferId(transfer_id);
+    setFiles([]);
+    setOptionalMsg(false);
+    setCustomMsg("");
   };
 
   return (
@@ -75,7 +118,10 @@ const AddFiles: React.FC<AddFilesNavigationProps> = ({ route }) => {
             <AntDesign name="addfile" size={18} color="black" /> Add File
           </Button>
           <Button
-            parentProps={{ onPress: SendFiles, disabled }}
+            parentProps={{
+              onPress: transferId === null ? CreateTransfer : SendAdditionalFiles,
+              disabled,
+            }}
             childStyle={tw`bg-white text-[${ColorScheme.PRIMARY_CONTENT}] ${
               disabled ? "opacity-50" : ""
             } border-2 border-black mx-2 mb-2`}>

@@ -58,12 +58,10 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
 
   const deleteFile = useCallback(
     async (file_id: string) => {
-      const { succeed } = await ApiClient.Delete(
-        "/file/{file_id}",
-        { file_id },
-        undefined,
-        undefined
-      );
+      if (pool_key_phrase === undefined) return pushToast("Please join a pool before");
+      const { succeed } = await ApiClient.Delete("/file/{file_id}", { file_id }, undefined, {
+        pool_kp: pool_key_phrase,
+      });
 
       if (succeed) {
         pushToast("Deleted successfully");
@@ -75,17 +73,20 @@ const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route
         refreshTransfer(); // refresh
       } else pushToast("Failed to delete file");
     },
-    [FilesInfo, transfer_id, refreshTransfer]
+    [FilesInfo, transfer_id, pool_key_phrase]
   );
-  const downloadFiles = useCallback(async (files_to_download: [string, string][]) => {
-    if (pool_key_phrase === undefined) return pushToast("Please join a pool before");
+  const downloadFiles = useCallback(
+    async (files_to_download: [string, string][]) => {
+      if (pool_key_phrase === undefined) return pushToast("Please join a pool before");
 
-    pushToast("Downloading... (might take a long time)", ToastDuration.LONG);
-    const { succeed } = await ApiClient.HandleGetFilesAndSave(files_to_download, pool_key_phrase);
+      pushToast("Downloading... (might take a long time)", ToastDuration.LONG);
+      const { succeed } = await ApiClient.HandleGetFilesAndSave(files_to_download, pool_key_phrase);
 
-    if (succeed) pushToast("Downloaded successfully");
-    else pushToast("Failed to download all files");
-  }, []);
+      if (succeed) pushToast("Downloaded successfully");
+      else pushToast("Failed to download all files");
+    },
+    [pool_key_phrase]
+  );
 
   const deleteTransfer = async () => {
     if (transfer === undefined) return;
