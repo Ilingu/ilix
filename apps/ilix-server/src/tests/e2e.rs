@@ -139,8 +139,6 @@ mod tests {
         )
         .await;
 
-        /* Note: Everything that is not in a scope block is not important to future test */
-
         // InvalidKeyPhrase tests
         {
             exec_get_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
@@ -151,8 +149,9 @@ mod tests {
         {
             let fake_pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
             exec_get_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
-            exec_join_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
-            exec_leave_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
+            exec_join_pool(&app, &fake_pool_kp, "bliwox", Some("PoolNotFound")).await;
+            exec_leave_pool(&app, &fake_pool_kp, "bliwox", Some("PoolNotFound")).await;
+            exec_delete_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
         }
 
         // TransferNotFound tests
@@ -197,17 +196,18 @@ mod tests {
 
         // join
         {
-            exec_join_pool(&app, &pool_kp, None).await; // join pool test
-            exec_join_pool(&app, &pool_kp, Some("AlreadyInPool")).await; // AlreadyInPool pool test
+            exec_join_pool(&app, &pool_kp, "bliwox", None).await; // join pool test
+            exec_join_pool(&app, &pool_kp, "bliwox", Some("AlreadyInPool")).await;
+            // AlreadyInPool pool test
         }
 
         // leave
         {
-            exec_leave_pool(&app, &pool_kp, None).await; // leave pool test
-            exec_leave_pool(&app, &pool_kp, Some("NotInPool")).await; // NotInPool pool test
+            exec_leave_pool(&app, &pool_kp, "bliwox", None).await; // leave pool test
+            exec_leave_pool(&app, &pool_kp, "bliwox", Some("NotInPool")).await; // NotInPool pool test
         }
 
-        exec_join_pool(&app, &pool_kp, None).await; // must have two user in pool for next tests
+        exec_join_pool(&app, &pool_kp, "bliwox", None).await; // must have two user in pool for next tests
 
         let transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
         {
@@ -230,6 +230,7 @@ mod tests {
         assert!(added_files_ids
             .iter()
             .all(|file_id| added_transfer.files_id.contains(file_id)));
+        assert_eq!(added_transfer.files_id.len(), 3);
 
         // test file getters
         {
@@ -256,9 +257,77 @@ mod tests {
         // check that file has also been deleted of the transfer
         assert!(!added_transfer.files_id.contains(&deleted_file_id));
 
-        exec_delete_transfer(&app, &pool_kp, &transfer_id, None).await;
+        // test delete transfer
+        {
+            exec_delete_transfer(&app, &pool_kp, &transfer_id, None).await;
+        }
+
+        // check that transfer really deleted and no files left
         exec_get_all_transfer(&app, &pool_kp, true).await;
         exec_get_files_info(&app, &added_transfer.files_id, true).await;
+
+        // delete everyone in pool should delete pool
+        {
+            exec_leave_pool(&app, &pool_kp, "bliwox", None).await;
+            exec_leave_pool(&app, &pool_kp, "ilingu", None).await;
+
+            exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await; // check that pool has been deleted
+        }
+
+        // test delete pool with files and transfer left in pool
+        {
+            // recreate a new pool to test if delete pool works
+            let pool_kp = exec_new_pool(&app).await;
+            exec_join_pool(&app, &pool_kp, "bliwox", None).await;
+
+            let transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
+            let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
+            assert_eq!(transfers.len(), 1);
+            assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
+
+            let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+            assert_eq!(added_transfer.files_id.len(), 2);
+            exec_get_files_info(&app, &added_transfer.files_id, false).await;
+
+            // test delete pool
+            {
+                exec_delete_pool(&app, &pool_kp, None).await;
+            }
+
+            // check that nor pool nor transfer nor files are left
+            exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await;
+            exec_get_all_transfer(&app, &pool_kp, true).await;
+            exec_get_files_info(&app, &added_transfer.files_id, true).await;
+        }
+
+        // test leave pool with files and transfer left in pool
+        {
+            // recreate a new pool to test if leave pool works and delete remaining transfer and files
+            let pool_kp = exec_new_pool(&app).await;
+            exec_join_pool(&app, &pool_kp, "bliwox", None).await;
+
+            let transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
+            let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
+            assert_eq!(transfers.len(), 1);
+            assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
+
+            let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+            assert_eq!(added_transfer.files_id.len(), 2);
+            exec_get_files_info(&app, &added_transfer.files_id, false).await;
+
+            // should delete transfer+files
+            exec_leave_pool(&app, &pool_kp, "ilingu", None).await;
+
+            // check that nor transfer nor files are left
+            exec_get_all_transfer(&app, &pool_kp, true).await;
+            exec_get_files_info(&app, &added_transfer.files_id, true).await;
+
+            // delete pool
+            exec_delete_pool(&app, &pool_kp, None).await;
+            exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await; // check that pool has been deleted
+        }
+
+        println!("->> all tests succeed");
     }
 
     async fn exec_new_pool<S, B>(app: &S) -> String
@@ -315,8 +384,12 @@ mod tests {
         Some(pool)
     }
 
-    async fn exec_join_pool<S, B>(app: &S, pool_kp: &str, should_error: Option<&'static str>)
-    where
+    async fn exec_join_pool<S, B>(
+        app: &S,
+        pool_kp: &str,
+        device_id: &str,
+        should_error: Option<&'static str>,
+    ) where
         S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
         B: MessageBody,
     {
@@ -326,7 +399,7 @@ mod tests {
                 HeaderName::from_static("authorization"),
                 HeaderValue::from_str(pool_kp).unwrap(),
             ))
-            .set_json(json!({ "device_id": "bliwox", "device_name" : "bliwox1" }))
+            .set_json(json!({ "device_id": device_id, "device_name" : device_id.to_string()+"1" }))
             .to_request();
 
         let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
@@ -346,8 +419,12 @@ mod tests {
         println!("->> 'bliwox' joined the pool");
     }
 
-    async fn exec_leave_pool<S, B>(app: &S, pool_kp: &str, should_error: Option<&'static str>)
-    where
+    async fn exec_leave_pool<S, B>(
+        app: &S,
+        pool_kp: &str,
+        device_id: &str,
+        should_error: Option<&'static str>,
+    ) where
         S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
         B: MessageBody,
     {
@@ -357,7 +434,7 @@ mod tests {
                 HeaderName::from_static("authorization"),
                 HeaderValue::from_str(pool_kp).unwrap(),
             ))
-            .set_json(json!({"device_id": "bliwox"}))
+            .set_json(json!({"device_id": device_id}))
             .to_request();
 
         let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
@@ -508,7 +585,10 @@ mod tests {
             .to_request();
         let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
         match should_error {
-            true => assert_eq!(resp.reason.as_ref().unwrap(), "FileNotFound"),
+            true => {
+                assert_eq!(resp.reason.as_ref().unwrap(), "FileNotFound");
+                return;
+            }
             false => assert!(resp.is_ok()),
         }
 
@@ -563,7 +643,10 @@ mod tests {
                 || file_hash == file2_right_hash
                 || file_hash == file3_right_hash;
             match should_error {
-                true => assert!(!file_integrity),
+                true => {
+                    assert!(!file_integrity);
+                    return;
+                }
                 false => assert!(file_integrity),
             };
         }
@@ -589,7 +672,10 @@ mod tests {
             .to_request();
         let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
         match should_error {
-            Some(err) => assert_eq!(resp.reason.as_ref().unwrap(), err),
+            Some(err) => {
+                assert_eq!(resp.reason.as_ref().unwrap(), err);
+                return;
+            }
             None => assert!(resp.is_ok()),
         }
 
@@ -625,10 +711,37 @@ mod tests {
             .to_request();
         let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
         match should_error {
-            Some(err) => assert_eq!(resp.reason.as_ref().unwrap(), err),
+            Some(err) => {
+                assert_eq!(resp.reason.as_ref().unwrap(), err);
+                return;
+            }
             None => assert!(resp.is_ok()),
         }
 
-        println!("->> File deleted successfully.");
+        println!("->> Transfer deleted successfully.");
+    }
+
+    async fn exec_delete_pool<S, B>(app: &S, pool_kp: &str, should_error: Option<&'static str>)
+    where
+        S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
+        B: MessageBody,
+    {
+        let req = test::TestRequest::delete()
+            .uri("/pool")
+            .append_header((
+                HeaderName::from_static("authorization"),
+                HeaderValue::from_str(pool_kp).unwrap(),
+            ))
+            .to_request();
+        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
+        match should_error {
+            Some(err) => {
+                assert_eq!(resp.reason.as_ref().unwrap(), err);
+                return;
+            }
+            None => assert!(resp.is_ok()),
+        }
+
+        println!("->> Pool deleted successfully.");
     }
 }
