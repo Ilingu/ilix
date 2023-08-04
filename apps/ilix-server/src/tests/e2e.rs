@@ -40,6 +40,7 @@ mod tests {
     use anyhow::{anyhow, Result};
     use async_trait::async_trait;
     use reqwest::Response;
+    use xxhash_rust::xxh3::{self, xxh3_64};
 
     #[async_trait]
     trait RespJson {
@@ -74,7 +75,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_full_api() {
-        {ffu 
+        {
             let res = reqwest::get("http://localhost:3000/ping")
                 .await
                 .expect("This server should be launched before tests");
@@ -441,5 +442,51 @@ mod tests {
 
         println!("->> Transfers created");
         Some(files_ids)
+    }
+
+    async fn exec_get_file<S, B>(
+        app: &S,
+        pool_kp: &str,
+        files_ids: &[String],
+        should_error: Option<&'static str>,
+    ) -> Vec<FilePoolTransferExt>
+    where
+        S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
+        B: MessageBody,
+    {
+        let (file1, file2, file3) = join!(
+            tokio::fs::read("./src/tests/Assets/test1.jpg"),
+            tokio::fs::read_to_string("./src/tests/Assets/test2.txt"),
+            tokio::fs::read("./src/tests/Assets/test3.mp3")
+        );
+
+        let (file1_right_hash, file2_right_hash, file3_right_hash) = join!(
+            tokio::task::spawn_blocking(move || xxh3_64(&file1.unwrap())),
+            tokio::task::spawn_blocking(move || xxh3_64(file2.unwrap().as_bytes())),
+            tokio::task::spawn_blocking(move || xxh3_64(&file3.unwrap()))
+        );
+
+        files_ids.iter().map(|file_id| {
+            let req = test::TestRequest::get()
+                .uri(format!("/file/{file_id}"))
+                .append_header((
+                    HeaderName::from_static("authorization"),
+                    HeaderValue::from_str(pool_kp).unwrap(),
+                ))
+                .to_request();
+        });
+
+        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
+        let transfers = resp.parse_data::<Vec<FilePoolTransferExt>>().unwrap();
+        match should_be_empty {
+            true => {
+                assert!(transfers.is_empty());
+                return vec![];
+            }
+            false => assert!(!transfers.is_empty()),
+        }
+
+        println!("->> Transfers fetched");
+        transfers
     }
 }
