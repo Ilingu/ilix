@@ -26,6 +26,5 @@ struct FileInfo {
     pub filename: String,
     pub chunkSize: usize,
     pub length: usize,
-    pub md5: String,
     pub uploadDate: DateTime,
 }

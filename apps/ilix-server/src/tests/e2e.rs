@@ -16,7 +16,7 @@ mod tests {
             files::get_files_info,
             pool::{delete_pool, get_pool, join_pool, leave_pool, new_pool},
         },
-        tests::{DevicesPool, FilePoolTransferExt},
+        tests::{DevicesPool, FileInfo, FilePoolTransferExt},
         utils::{
             keyphrase::{KeyPhrase, KEY_PHRASE_LEN},
             sse::Broadcaster,
@@ -33,6 +33,7 @@ mod tests {
         web::{self},
         App,
     };
+    use futures_util::future;
     use serde::{de, Deserialize};
     use serde_json::json;
     use tokio::join;
@@ -40,7 +41,7 @@ mod tests {
     use anyhow::{anyhow, Result};
     use async_trait::async_trait;
     use reqwest::Response;
-    use xxhash_rust::xxh3::{self, xxh3_64};
+    use xxhash_rust::xxh3::xxh3_64;
 
     #[async_trait]
     trait RespJson {
@@ -69,7 +70,7 @@ mod tests {
             serde_json::from_str::<T>(self.data.as_ref().ok_or(())?).map_err(|_| ())
         }
         fn is_ok(&self) -> bool {
-            self.success && self.reason.is_none()
+            self.success && self.reason.is_none() && self.data.is_some()
         }
     }
 
@@ -143,23 +144,48 @@ mod tests {
         // InvalidKeyPhrase tests
         {
             exec_get_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
-            exec_join_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
-            exec_leave_pool(&app, "not valid kp", Some("InvalidKeyPhrase")).await;
-            exec_create_transfer("not valid kp", Some("InvalidKeyPhrase")).await;
+            // behind evevy route the "InvalidKeyPhrase" error comes from the same extractor (the same code is executed) so if it work for one it'll work for all the other
         }
 
         // PoolNotFound tests
         {
-            let pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
-            exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await;
-            exec_join_pool(&app, &pool_kp, Some("PoolNotFound")).await;
-            exec_leave_pool(&app, &pool_kp, Some("PoolNotFound")).await;
+            let fake_pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
+            exec_get_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
+            exec_join_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
+            exec_leave_pool(&app, &fake_pool_kp, Some("PoolNotFound")).await;
+        }
+
+        // TransferNotFound tests
+        {
+            let fake_pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
+            exec_delete_file(
+                &app,
+                &fake_pool_kp,
+                "64ca5c14b2d5be5721421a84",
+                Some("TransferNotFound"),
+            )
+            .await;
+            exec_delete_transfer(
+                &app,
+                &fake_pool_kp,
+                "64ca5c14b2d5be5721421a84",
+                Some("TransferNotFound"),
+            )
+            .await;
         }
 
         // check that no transfer exists
         {
+            let fake_pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
+            exec_get_all_transfer(&app, &fake_pool_kp, true).await;
+        }
+
+        // check that no file input is an error
+        {
+            exec_get_files_info(&app, &["64ca5c14b2d5be5721421a84".to_string()], true).await;
+
             let pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
-            exec_get_all_transfer(&app, &pool_kp, true).await;
+            exec_get_files(&app, &pool_kp, &[], true).await;
         }
 
         let pool_kp = exec_new_pool(&app).await; // new pool test, must create a pool for next tests
@@ -197,14 +223,42 @@ mod tests {
             .unwrap();
 
         let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
-        assert!(!transfers.is_empty());
-        assert!(transfers.iter().any(|t| t._id == transfer_id));
+        assert_eq!(transfers.len(), 1);
         assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
 
         let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
         assert!(added_files_ids
             .iter()
             .all(|file_id| added_transfer.files_id.contains(file_id)));
+
+        // test file getters
+        {
+            exec_get_files_info(&app, &added_transfer.files_id, false).await;
+            {
+                let fake_pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
+                exec_get_files(&app, &fake_pool_kp, &added_transfer.files_id, true).await;
+                // decryption error
+            }
+            exec_get_files(&app, &pool_kp, &added_transfer.files_id, false).await;
+        }
+
+        // test delete file
+        let deleted_file_id = added_transfer.files_id[0].clone();
+        {
+            exec_delete_file(&app, &pool_kp, &deleted_file_id, None).await;
+        }
+
+        let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
+        assert_eq!(transfers.len(), 1);
+
+        let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+
+        // check that file has also been deleted of the transfer
+        assert!(!added_transfer.files_id.contains(&deleted_file_id));
+
+        exec_delete_transfer(&app, &pool_kp, &transfer_id, None).await;
+        exec_get_all_transfer(&app, &pool_kp, true).await;
+        exec_get_files_info(&app, &added_transfer.files_id, true).await;
     }
 
     async fn exec_new_pool<S, B>(app: &S) -> String
@@ -444,12 +498,30 @@ mod tests {
         Some(files_ids)
     }
 
-    async fn exec_get_file<S, B>(
-        app: &S,
-        pool_kp: &str,
-        files_ids: &[String],
-        should_error: Option<&'static str>,
-    ) -> Vec<FilePoolTransferExt>
+    async fn exec_get_files_info<S, B>(app: &S, files_ids: &[String], should_error: bool)
+    where
+        S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
+        B: MessageBody,
+    {
+        let req = test::TestRequest::get()
+            .uri(&format!("/files/info?files_ids={}", files_ids.join(",")))
+            .to_request();
+        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
+        match should_error {
+            true => assert_eq!(resp.reason.as_ref().unwrap(), "FileNotFound"),
+            false => assert!(resp.is_ok()),
+        }
+
+        let files_info = resp.parse_data::<Vec<FileInfo>>().unwrap();
+        assert_eq!(files_info.len(), files_ids.len());
+        assert!(files_info.iter().all(|info| info.filename == "test1.jpg"
+            || info.filename == "test2.txt"
+            || info.filename == "test3.mp3"));
+
+        println!("->> Files info fetched");
+    }
+
+    async fn exec_get_files<S, B>(app: &S, pool_kp: &str, files_ids: &[String], should_error: bool)
     where
         S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
         B: MessageBody,
@@ -465,28 +537,98 @@ mod tests {
             tokio::task::spawn_blocking(move || xxh3_64(file2.unwrap().as_bytes())),
             tokio::task::spawn_blocking(move || xxh3_64(&file3.unwrap()))
         );
+        let (file1_right_hash, file2_right_hash, file3_right_hash) = (
+            file1_right_hash.unwrap(),
+            file2_right_hash.unwrap(),
+            file3_right_hash.unwrap(),
+        );
 
-        files_ids.iter().map(|file_id| {
+        let tasks = files_ids.iter().map(|file_id| {
             let req = test::TestRequest::get()
-                .uri(format!("/file/{file_id}"))
+                .uri(&format!("/file/{file_id}"))
                 .append_header((
                     HeaderName::from_static("authorization"),
                     HeaderValue::from_str(pool_kp).unwrap(),
                 ))
                 .to_request();
+            async {
+                let file_buf = test::call_and_read_body(app, req).await;
+                tokio::task::spawn_blocking(move || xxh3_64(&file_buf)).await
+            }
         });
 
-        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
-        let transfers = resp.parse_data::<Vec<FilePoolTransferExt>>().unwrap();
-        match should_be_empty {
-            true => {
-                assert!(transfers.is_empty());
-                return vec![];
-            }
-            false => assert!(!transfers.is_empty()),
+        for resp in future::join_all(tasks).await {
+            let file_hash = resp.unwrap();
+            let file_integrity = file_hash == file1_right_hash
+                || file_hash == file2_right_hash
+                || file_hash == file3_right_hash;
+            match should_error {
+                true => assert!(!file_integrity),
+                false => assert!(file_integrity),
+            };
         }
 
-        println!("->> Transfers fetched");
-        transfers
+        println!("->> File fetched without loss");
+    }
+
+    async fn exec_delete_file<S, B>(
+        app: &S,
+        pool_kp: &str,
+        file_id: &str,
+        should_error: Option<&'static str>,
+    ) where
+        S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
+        B: MessageBody,
+    {
+        let req = test::TestRequest::delete()
+            .uri(&format!("/file/{file_id}"))
+            .append_header((
+                HeaderName::from_static("authorization"),
+                HeaderValue::from_str(pool_kp).unwrap(),
+            ))
+            .to_request();
+        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
+        match should_error {
+            Some(err) => assert_eq!(resp.reason.as_ref().unwrap(), err),
+            None => assert!(resp.is_ok()),
+        }
+
+        // check if file really deleted
+        let req = test::TestRequest::get()
+            .uri(&format!("/file/{file_id}"))
+            .append_header((
+                HeaderName::from_static("authorization"),
+                HeaderValue::from_str(pool_kp).unwrap(),
+            ))
+            .to_request();
+        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await; // should not return file but json
+        assert_eq!(resp.reason.unwrap(), "MongoError");
+
+        println!("->> File deleted successfully.");
+    }
+
+    async fn exec_delete_transfer<S, B>(
+        app: &S,
+        pool_kp: &str,
+        transfer_id: &str,
+        should_error: Option<&'static str>,
+    ) where
+        S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::error::Error>,
+        B: MessageBody,
+    {
+        let req = test::TestRequest::delete()
+            .uri(&format!("/file-transfer/ilingu/{transfer_id}"))
+            .append_header((
+                HeaderName::from_static("authorization"),
+                HeaderValue::from_str(pool_kp).unwrap(),
+            ))
+            .to_request();
+        let resp: ResponsePayload = test::call_and_read_body_json(app, req).await;
+        match should_error {
+            Some(err) => assert_eq!(resp.reason.as_ref().unwrap(), err),
+            None => assert!(resp.is_ok()),
+        }
+
+        println!("->> File deleted successfully.");
     }
 }
