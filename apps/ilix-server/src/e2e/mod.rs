@@ -1,3 +1,34 @@
+use mongodb::bson::{oid::ObjectId, DateTime};
+use serde::Deserialize;
+use std::collections::HashMap;
+
+#[allow(dead_code)]
+#[derive(Deserialize)]
+struct DevicesPool {
+    pub pool_name: String,
+    pub devices_id: Vec<String>,
+    pub devices_id_to_name: HashMap<String, String>,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize)]
+struct FilePoolTransferExt {
+    pub _id: String,
+    pub to: String,            // device id
+    pub from: String,          // device id
+    pub files_id: Vec<String>, // _id pointer reference
+}
+
+#[allow(non_snake_case, dead_code)]
+#[derive(Deserialize)]
+struct FileInfo {
+    pub _id: ObjectId,
+    pub filename: String,
+    pub chunkSize: usize,
+    pub length: usize,
+    pub uploadDate: DateTime,
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -7,6 +38,7 @@ mod tests {
             collections::{DevicePoolsCollection, FilePoolTransferCollection},
             IlixDB,
         },
+        e2e::{DevicesPool, FileInfo, FilePoolTransferExt},
         services::{
             events::event_stream,
             file::{delete_file, get_file},
@@ -16,7 +48,6 @@ mod tests {
             files::get_files_info,
             pool::{delete_pool, get_pool, join_pool, leave_pool, new_pool},
         },
-        tests::{DevicesPool, FileInfo, FilePoolTransferExt},
         utils::{
             keyphrase::{KeyPhrase, KEY_PHRASE_LEN},
             sse::Broadcaster,
@@ -183,8 +214,8 @@ mod tests {
         {
             exec_get_files_info(&app, &["64ca5c14b2d5be5721421a84".to_string()], true).await;
 
-            let pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
-            exec_get_files(&app, &pool_kp, &[], true).await;
+            let fake_pool_kp = KeyPhrase::new(KEY_PHRASE_LEN).unwrap().0;
+            exec_get_files(&app, &fake_pool_kp, &[], true).await;
         }
 
         let pool_kp = exec_new_pool(&app).await; // new pool test, must create a pool for next tests
@@ -320,6 +351,37 @@ mod tests {
 
             // should delete transfer+files
             exec_leave_pool(&app, &pool_kp, "ilingu", None).await;
+
+            // check that nor transfer nor files are left
+            exec_get_all_transfer(&app, &pool_kp, true).await;
+            exec_get_files_info(&app, &added_transfer.files_id, true).await;
+
+            // delete pool
+            exec_delete_pool(&app, &pool_kp, None).await;
+            exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await; // check that pool has been deleted
+        }
+
+        // test delete all file in transfer
+        {
+            // recreate a new pool to test delete all file in transfer
+            let pool_kp = exec_new_pool(&app).await;
+            exec_join_pool(&app, &pool_kp, "bliwox", None).await;
+
+            let _transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
+            let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
+            assert_eq!(transfers.len(), 1);
+            assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
+
+            let added_transfer = &transfers[0];
+            assert_eq!(added_transfer.files_id.len(), 2);
+            exec_get_files_info(&app, &added_transfer.files_id, false).await;
+
+            // should delete transfer
+            let tasks = added_transfer
+                .files_id
+                .iter()
+                .map(|file_id| exec_delete_file(&app, &pool_kp, file_id, None));
+            future::join_all(tasks).await;
 
             // check that nor transfer nor files are left
             exec_get_all_transfer(&app, &pool_kp, true).await;
@@ -489,8 +551,8 @@ mod tests {
         should_error: Option<&'static str>,
     ) -> Option<String> {
         let (file1, file2) = join!(
-            tokio::fs::read("./src/tests/Assets/test1.jpg"),
-            tokio::fs::read_to_string("./src/tests/Assets/test2.txt")
+            tokio::fs::read("./src/e2e/Assets/test1.jpg"),
+            tokio::fs::read_to_string("./src/e2e/Assets/test2.txt")
         );
 
         let form = reqwest::multipart::Form::new()
@@ -525,7 +587,7 @@ mod tests {
                 assert_eq!(resp.reason.as_ref().unwrap(), err);
                 return None;
             }
-            None => assert!(resp.is_ok()),
+            None => assert!(resp.is_ok(), "{:?}", resp.reason),
         }
 
         let transfers_id = resp.parse_data::<String>().unwrap();
@@ -539,9 +601,7 @@ mod tests {
         transfer_id: &str,
         should_error: Option<&'static str>,
     ) -> Option<Vec<String>> {
-        let file3 = tokio::fs::read("./src/tests/Assets/test3.mp3")
-            .await
-            .unwrap();
+        let file3 = tokio::fs::read("./src/e2e/Assets/test3.mp3").await.unwrap();
         let form = reqwest::multipart::Form::new().part(
             "file3",
             reqwest::multipart::Part::bytes(file3)
@@ -610,9 +670,9 @@ mod tests {
         B: MessageBody,
     {
         let (file1, file2, file3) = join!(
-            tokio::fs::read("./src/tests/Assets/test1.jpg"),
-            tokio::fs::read_to_string("./src/tests/Assets/test2.txt"),
-            tokio::fs::read("./src/tests/Assets/test3.mp3")
+            tokio::fs::read("./src/e2e/Assets/test1.jpg"),
+            tokio::fs::read_to_string("./src/e2e/Assets/test2.txt"),
+            tokio::fs::read("./src/e2e/Assets/test3.mp3")
         );
 
         let (file1_right_hash, file2_right_hash, file3_right_hash) = join!(

@@ -47,6 +47,7 @@ impl From<BroadcastMessage> for Event {
     }
 }
 
+/// handles all the **SSE** implementation logic
 pub struct Broadcaster {
     inner: Mutex<BroadcasterInner>,
 }
@@ -104,6 +105,7 @@ impl Broadcaster {
         self.inner.lock().clients = ok_clients;
     }
 
+    /// helper function to simplified the creation of client id. It hashes the given parameters
     fn make_client_id(device_id: &str, pool_kp: &KeyPhrase) -> Result<String, ServerErrors> {
         Ok(hash(format!("{}:{}", device_id, pool_kp.hash()?)))
     }

@@ -38,6 +38,8 @@ impl ServerErrors {
             "EncryptionError" => Ok(Self::EncryptionError),
             "DecryptionError" => Ok(Self::DecryptionError),
             "FileNotFound" => Ok(Self::FileNotFound),
+            "HashError" => Ok(Self::HashError),
+            "SseFailedToSend" => Ok(Self::SseFailedToSend),
             _ => Err(anyhow!("")),
         }
     }

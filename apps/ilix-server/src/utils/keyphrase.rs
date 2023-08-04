@@ -8,10 +8,14 @@ use super::{errors::ServerErrors, hash};
 
 pub const KEY_PHRASE_LEN: usize = 20;
 
+/// check if the keyphrase is valid, **it does not** check if this keyphrase is linked to a pool
 fn is_key_phrase(str: &str) -> bool {
     str.split('-').count() == KEY_PHRASE_LEN
 }
 
+/// Utility struct to manage `key phrase` in this application, which are the common and unique identifier and password of a pool
+///
+/// This is also an actix extractor, that can be used to extract from the "Autorization" header the key phrase
 #[derive(Clone)]
 pub struct KeyPhrase(pub String);
 
@@ -78,24 +82,35 @@ impl KeyPhrase {
         Ok(Self(key_phrase.join("-")))
     }
 
+    /// **Hash** the plain text key phrase to be able to securely stores it in a db.
+    ///
+    /// Key phrase are both pool unique identifier and password, thus this can be hashed with "Argon2" for exemple
+    ///
+    /// This is a security drawback that is partially patched with a secret amount of hash round and a secret server key
+    /// acting as a unique salt (not as good as rng salt, but I can't do more)
     pub fn hash(&self) -> Result<String, ServerErrors> {
         let hash_round = env::var("HASH_ROUND")
             .map_err(|_| ServerErrors::EnvVarNotFound)?
             .parse::<usize>()
             .map_err(|_| ServerErrors::ParseError)?;
+        let salt = env::var("SALT").map_err(|_| ServerErrors::EnvVarNotFound)?;
         if hash_round < 5 {
             return Err(ServerErrors::HashError);
         }
 
-        let mut result = self.0.clone();
+        let mut result = format!("{salt}{}", self.0.clone());
         for _ in 0..hash_round {
             result = hash(result);
         }
         Ok(result)
     }
 
+    /// It return if the user provided key phrase: `kp_to_verify`, match the right key phrase in db: `right_hashed_kp`
+    ///
+    /// However in pratice this is never called throughout the application because key phrase are also the unique identifier
+    /// of a pool. Thus this check is done while searching pool in db corresponding the the user key phrase.
     #[allow(dead_code)]
-    pub fn verify(right_kp_hash: String, kp_to_verify: &str) -> bool {
+    pub fn verify(right_hashed_kp: String, kp_to_verify: &str) -> bool {
         let kp = match KeyPhrase::try_from(kp_to_verify) {
             Ok(d) => d,
             Err(_) => return false,
@@ -104,6 +119,30 @@ impl KeyPhrase {
             Ok(v) => v,
             Err(_) => return false,
         };
-        hashed_kp_to_verify == right_kp_hash
+        hashed_kp_to_verify == right_hashed_kp
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use crate::utils::keyphrase::is_key_phrase;
+
+    use super::KeyPhrase;
+
+    #[test]
+    fn key_phrase_test() {
+        env::set_var("HASH_ROUND", "10");
+        env::set_var("SALT", "sasamiya");
+
+        const N_WORDS: usize = 20;
+        let kp = KeyPhrase::new(N_WORDS).unwrap();
+
+        assert!(is_key_phrase(&kp.0));
+        let kp = KeyPhrase::try_from(kp.0).unwrap();
+
+        let hashed_kp = kp.hash().unwrap();
+        assert!(KeyPhrase::verify(hashed_kp, &kp.0));
     }
 }

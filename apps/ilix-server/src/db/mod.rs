@@ -18,6 +18,7 @@ pub enum IlixDBErrors {
     InvalidOption,
 }
 
+/// wrapper for the db connection
 #[derive(Clone)]
 pub struct IlixDB {
     pub client: Client,

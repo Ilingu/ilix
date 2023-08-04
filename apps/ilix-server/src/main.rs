@@ -1,7 +1,7 @@
 mod db;
+mod e2e;
 mod extractors;
 mod services;
-mod tests;
 mod utils;
 
 use actix_web::{middleware::Logger, web, App, HttpResponse, HttpServer};

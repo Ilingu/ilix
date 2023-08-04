@@ -36,11 +36,15 @@ pub trait DevicePoolsCollection {
         device_id: &str,
         device_name: &str,
     ) -> Result<DevicesPool, ServerErrors>;
+    /// *this will also delete all the remaining user transfers and files*
+    ///
+    /// if nobody left in the pool, the pool is deleted
     async fn leave_pool(
         &self,
         key_phrase: &KeyPhrase,
         device_id: &str,
     ) -> Result<DevicesPool, ServerErrors>;
+    /// deletes everything, the pool, all its corresponding transfers and files
     async fn delete_pool(&self, key_phrase: &KeyPhrase) -> Result<DevicesPool, ServerErrors>;
     async fn create_pool_hashed_kp_index(&self) -> Result<()>;
 }
@@ -259,6 +263,8 @@ pub trait FilePoolTransferCollection {
         key_phrase: &KeyPhrase,
         device_id: &str,
     ) -> Result<Vec<FilePoolTransferExt>, ServerErrors>;
+    /// this only creates the transfer in db, files must be added to the db before calling this,
+    /// files are mendatory to call this.
     async fn create_transfer(
         &self,
         key_phrase: &KeyPhrase,
@@ -272,11 +278,16 @@ pub trait FilePoolTransferCollection {
         transfer_id: &str,
         key_phrase: &KeyPhrase,
     ) -> Result<FilePoolTransferExt, ServerErrors>;
+    /// if no files left in the transfer, this'll remove the transfer
     async fn remove_transfer_file(
         &self,
         file_id: &str,
         key_phrase: &KeyPhrase,
     ) -> Result<(), ServerErrors>;
+    /// **this only delete the transfer, not the files linked to it**,
+    /// it returns the transfer's files_ids
+    ///
+    /// *I know it's dumb, it's a development mistake, but I'm too lazy to changes it, because I don't want to break anything*
     async fn delete_transfer(
         &self,
         key_phrase: &KeyPhrase,
@@ -477,11 +488,13 @@ impl FilePoolTransferCollection for Client {
 #[async_trait]
 pub trait FileStorageGridFS {
     async fn get_files_info(&self, files_ids: &[String]) -> Result<Vec<FileInfo>, ServerErrors>;
+    /// decrypts and download file from db
     async fn get_file(
         &self,
         file_id: &str,
         key_phrase: &KeyPhrase,
     ) -> Result<(String, Vec<u8>), ServerErrors>;
+    /// encrypts and add files to db
     async fn add_files(
         &self,
         files_datas: Vec<(String, Vec<u8>)>,
