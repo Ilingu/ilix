@@ -191,7 +191,9 @@ mod tests {
 
         // get pool test
         {
-            exec_get_pool(&app, &pool_kp, None).await;
+            let pool = exec_get_pool(&app, &pool_kp, None).await.unwrap();
+            assert_eq!(pool.devices_id, vec!["ilingu"]);
+            assert_eq!(pool.pool_name, "ilovecat");
         }
 
         // join
@@ -213,9 +215,10 @@ mod tests {
         {
             let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
 
-            assert!(!transfers.is_empty());
-            assert!(transfers.iter().any(|t| t._id == transfer_id));
+            assert_eq!(transfers.len(), 1);
             assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
+            assert_eq!(transfers[0].from, "bliwox");
+            assert_eq!(transfers[0].to, "ilingu");
         }
 
         let added_files_ids = exec_add_files_to_transfer(&pool_kp, &transfer_id, None)
@@ -226,7 +229,7 @@ mod tests {
         assert_eq!(transfers.len(), 1);
         assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
 
-        let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+        let added_transfer = &transfers[0];
         assert!(added_files_ids
             .iter()
             .all(|file_id| added_transfer.files_id.contains(file_id)));
@@ -252,7 +255,7 @@ mod tests {
         let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
         assert_eq!(transfers.len(), 1);
 
-        let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+        let added_transfer = &transfers[0];
 
         // check that file has also been deleted of the transfer
         assert!(!added_transfer.files_id.contains(&deleted_file_id));
@@ -280,12 +283,12 @@ mod tests {
             let pool_kp = exec_new_pool(&app).await;
             exec_join_pool(&app, &pool_kp, "bliwox", None).await;
 
-            let transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
+            let _transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
             let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
             assert_eq!(transfers.len(), 1);
             assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
 
-            let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+            let added_transfer = &transfers[0];
             assert_eq!(added_transfer.files_id.len(), 2);
             exec_get_files_info(&app, &added_transfer.files_id, false).await;
 
@@ -306,12 +309,12 @@ mod tests {
             let pool_kp = exec_new_pool(&app).await;
             exec_join_pool(&app, &pool_kp, "bliwox", None).await;
 
-            let transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
+            let _transfer_id = exec_create_transfer(&pool_kp, None).await.unwrap();
             let transfers = exec_get_all_transfer(&app, &pool_kp, false).await;
             assert_eq!(transfers.len(), 1);
             assert!(transfers.iter().all(|t| !t.files_id.is_empty()));
 
-            let added_transfer = transfers.iter().find(|t| t._id == transfer_id).unwrap();
+            let added_transfer = &transfers[0];
             assert_eq!(added_transfer.files_id.len(), 2);
             exec_get_files_info(&app, &added_transfer.files_id, false).await;
 

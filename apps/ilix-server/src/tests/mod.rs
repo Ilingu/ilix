@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 mod e2e;
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct DevicesPool {
     pub pool_name: String,
@@ -11,6 +12,7 @@ struct DevicesPool {
     pub devices_id_to_name: HashMap<String, String>,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct FilePoolTransferExt {
     pub _id: String,
@@ -19,7 +21,7 @@ struct FilePoolTransferExt {
     pub files_id: Vec<String>, // _id pointer reference
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, dead_code)]
 #[derive(Deserialize)]
 struct FileInfo {
     pub _id: ObjectId,
