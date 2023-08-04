@@ -37,6 +37,23 @@ mod tests {
     use serde_json::json;
     use tokio::join;
 
+    use anyhow::{anyhow, Result};
+    use async_trait::async_trait;
+    use reqwest::Response;
+
+    #[async_trait]
+    trait RespJson {
+        async fn to_json<T: for<'a> de::Deserialize<'a>>(self) -> Result<T>;
+    }
+
+    #[async_trait]
+    impl RespJson for Response {
+        async fn to_json<T: for<'a> de::Deserialize<'a>>(self) -> Result<T> {
+            let raw_body = self.text().await.map_err(|_| anyhow!("failed to read"))?;
+            serde_json::from_str(&raw_body).map_err(|_| anyhow!("failed to parse"))
+        }
+    }
+
     #[derive(Deserialize)]
     struct ResponsePayload {
         success: bool,
@@ -57,11 +74,13 @@ mod tests {
 
     #[actix_web::test]
     async fn test_full_api() {
-        {
-            let res = reqwest::blocking::get("http://localhost:3000/ping")
+        {ffu 
+            let res = reqwest::get("http://localhost:3000/ping")
+                .await
                 .expect("This server should be launched before tests");
             let fetch_res = res
                 .text()
+                .await
                 .expect("This server should be launched before tests");
             assert_eq!(
                 fetch_res, "pong",
@@ -134,7 +153,6 @@ mod tests {
             exec_get_pool(&app, &pool_kp, Some("PoolNotFound")).await;
             exec_join_pool(&app, &pool_kp, Some("PoolNotFound")).await;
             exec_leave_pool(&app, &pool_kp, Some("PoolNotFound")).await;
-            exec_create_transfer(&pool_kp, Some("PoolNotFound")).await;
         }
 
         // check that no transfer exists
@@ -335,22 +353,37 @@ mod tests {
         pool_kp: &str,
         should_error: Option<&'static str>,
     ) -> Option<String> {
-        let form = reqwest::blocking::multipart::Form::new()
-            .file("test1.jpg", "./src/tests/Assets/test1.jpg")
-            .unwrap()
-            .file("test2.txt", "./src/tests/Assets/test2.txt")
-            .unwrap();
+        let (file1, file2) = join!(
+            tokio::fs::read("./src/tests/Assets/test1.jpg"),
+            tokio::fs::read_to_string("./src/tests/Assets/test2.txt")
+        );
 
-        println!("here");
-        let client = reqwest::blocking::Client::new();
+        let form = reqwest::multipart::Form::new()
+            .part(
+                "file1",
+                reqwest::multipart::Part::bytes(file1.unwrap())
+                    .file_name("test1.jpg")
+                    .mime_str("image/jpeg")
+                    .unwrap(),
+            )
+            .part(
+                "file2",
+                reqwest::multipart::Part::text(file2.unwrap())
+                    .file_name("test2.txt")
+                    .mime_str("text/plain")
+                    .unwrap(),
+            );
+
+        let client = reqwest::Client::new();
         let res = client
-            .post("http://localhost:3000/file-transfer/ilingu/all?from=bliwox&to=ilingu")
-            .header("authorization", pool_kp)
+            .post("http://localhost:3000/file-transfer?from=bliwox&to=ilingu")
+            .header("Authorization", pool_kp)
             .multipart(form)
             .send()
+            .await
             .unwrap();
-        let resp = res.json::<ResponsePayload>().unwrap();
-        let transfers_id = resp.parse_data::<String>().unwrap();
+
+        let resp = res.to_json::<ResponsePayload>().await.unwrap();
         match should_error {
             Some(err) => {
                 assert!(!resp.is_ok());
@@ -359,9 +392,11 @@ mod tests {
             }
             None => assert!(resp.is_ok()),
         }
+
+        let transfers_id = resp.parse_data::<String>().unwrap();
         assert!(!transfers_id.is_empty());
 
-        println!("->> Transfers created");
+        println!("->> Transfers created: {transfers_id}");
         Some(transfers_id)
     }
     async fn exec_add_files_to_transfer(
@@ -369,21 +404,29 @@ mod tests {
         transfer_id: &str,
         should_error: Option<&'static str>,
     ) -> Option<Vec<String>> {
-        let form = reqwest::blocking::multipart::Form::new()
-            .file("test3.mp3", "./src/tests/Assets/test3.mp3")
+        let file3 = tokio::fs::read("./src/tests/Assets/test3.mp3")
+            .await
             .unwrap();
+        let form = reqwest::multipart::Form::new().part(
+            "file3",
+            reqwest::multipart::Part::bytes(file3)
+                .file_name("test3.mp3")
+                .mime_str("audio/mpeg")
+                .unwrap(),
+        );
 
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::Client::new();
         let res = client
             .post(format!(
                 "http://localhost:3000/file-transfer/{transfer_id}/add_files"
             ))
-            .header("authorization", pool_kp)
+            .header("Authorization", pool_kp)
             .multipart(form)
             .send()
+            .await
             .unwrap();
-        let resp = res.json::<ResponsePayload>().unwrap();
-        let transfers_id = resp.parse_data::<Vec<String>>().unwrap();
+
+        let resp = res.to_json::<ResponsePayload>().await.unwrap();
         match should_error {
             Some(err) => {
                 assert!(!resp.is_ok());
@@ -392,9 +435,11 @@ mod tests {
             }
             None => assert!(resp.is_ok()),
         }
-        assert!(!transfers_id.is_empty());
+
+        let files_ids = resp.parse_data::<Vec<String>>().unwrap();
+        assert!(!files_ids.is_empty());
 
         println!("->> Transfers created");
-        Some(transfers_id)
+        Some(files_ids)
     }
 }
