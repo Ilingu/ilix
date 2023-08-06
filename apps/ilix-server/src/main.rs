@@ -24,7 +24,7 @@ use utils::{console_log, is_prod, sse::Broadcaster};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv::dotenv().expect("Couldn't load env variables");
+    load_env();
     let srv_addr = get_server_addr().expect("Couldn't get server addr");
 
     // db connection
@@ -90,8 +90,25 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 
-pub fn get_server_addr() -> Result<(&'static str, u16)> {
-    let port = env::var("PORT")?.parse::<u16>()?;
+/// It panics if it failed to load env vars
+fn load_env() {
+    match is_prod() {
+        true => {
+            assert!(!env::var("APP_MODE").unwrap().is_empty());
+            assert!(!env::var("HASH_ROUND").unwrap().is_empty());
+            assert!(!env::var("MONGODB_URI").unwrap().is_empty());
+            assert!(!env::var("SALT").unwrap().is_empty());
+        }
+        false => {
+            dotenv::dotenv().unwrap();
+        }
+    };
+}
+
+fn get_server_addr() -> Result<(&'static str, u16)> {
+    let port = env::var("PORT")
+        .unwrap_or(String::from("8080"))
+        .parse::<u16>()?;
     Ok(match is_prod() {
         true => ("0.0.0.0", port),
         false => ("127.0.0.1", port),

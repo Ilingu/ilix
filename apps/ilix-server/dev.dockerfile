@@ -34,6 +34,7 @@ COPY --from=builder /ilix_server/target/x86_64-unknown-linux-musl/release/ilix_s
 # Copy app required files & dirs
 COPY --from=builder /ilix_server/tmp ./tmp
 COPY --from=builder /ilix_server/Assets ./Assets
+COPY --from=builder /ilix_server/.env ./.env
 
 ENTRYPOINT ["/ilix_server/ilix_server"]
-EXPOSE 8080
+EXPOSE 3000

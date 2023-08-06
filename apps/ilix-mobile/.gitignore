@@ -14,6 +14,9 @@ web-build/
 /index.js
 /metro.config.js
 
+# env conf
+/.env
+
 # macOS
 .DS_Store
 

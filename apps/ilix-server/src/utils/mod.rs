@@ -17,10 +17,10 @@ pub fn hash<T: Into<String>>(msg: T) -> String {
 }
 
 pub fn is_prod() -> bool {
-    env::var("APP_MODE")
-        .unwrap_or_default()
-        .parse()
-        .unwrap_or(true)
+    match env::var("APP_MODE") {
+        Ok(mode) => mode == "prod",
+        Err(_) => false,
+    }
 }
 
 /// helper function that return whether the string is empty (including if string is only composed of spaces) or not
@@ -55,7 +55,20 @@ impl TrimObjectId for String {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use crate::utils::{hash, is_str_empty, TrimObjectId};
+
+    use super::is_prod;
+
+    #[test]
+    fn is_prod_test() {
+        env::set_var("APP_MODE", "dev");
+        assert!(!is_prod());
+
+        env::set_var("APP_MODE", "prod");
+        assert!(is_prod());
+    }
 
     #[test]
     fn hash_test() {
