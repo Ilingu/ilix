@@ -14,3 +14,7 @@
 3. [react-native](https://reactnative.dev/) ♥ (for the ui framework)
 4. [expo](https://expo.dev/) 📈 (to scale up and simplify react native experience)
 5. go see [package.json](./package.json)
+
+## Installation
+
+<a href="https://ilingu.github.io/fdroid/repo/"><img src="./assets/get-it-on-fdroid.png" width="256" /></a>

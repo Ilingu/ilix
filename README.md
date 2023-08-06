@@ -23,3 +23,7 @@ But like always this was a very great experience. I learned a lot of valuable th
 3. do a file sharing app, which is not simple (encryption, streams...)
 
 > Thus **do not** take this project seriously, it's just yet another stupid side project
+
+## Installation
+
+<a href="https://ilingu.github.io/fdroid/repo/"><img src="./assets/get-it-on-fdroid.png" width="256" /></a>
