@@ -102,11 +102,7 @@ type DeleteReturns<T extends DeleteRoutes> = T extends
   ? null
   : never;
 
-export const SERVER_BASE_URL = (
-  process.env.NODE_ENV === "development"
-    ? "https://38af-193-32-126-236.ngrok-free.app"
-    : process.env.EXPO_PUBLIC_API_URL ?? ""
-).replace(/\/+$/g, ""); // trim_matches_end of "/"
+export const SERVER_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/g, ""); // trim_matches_end of "/"
 
 /**
  * @namespace ApiClient - This namespace regroups all the functions related to using the ilix api server.
