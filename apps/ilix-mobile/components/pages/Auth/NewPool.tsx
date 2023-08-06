@@ -1,15 +1,16 @@
 import { useContext, useState } from "react";
-// rn
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Image, Text, TextInput, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import type { AuthNestedStack } from "../../../screens/Auth";
 
 // ui
 import ParticleView from "../../animations/Particles";
 import Button from "../../design/Button";
 import tw from "twrnc";
 import ColorScheme from "../../../lib/Theme";
+
+// types
+import type { AuthNestedStack } from "../../../screens/Auth";
 
 // icon
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
@@ -20,6 +21,8 @@ import ApiClient from "../../../lib/ApiClient";
 import AuthContext from "../../../lib/Context/Auth";
 import PoolContext from "../../../lib/Context/Pool";
 import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
+
+// -- end import
 
 type NewPoolNavigationProps = NativeStackScreenProps<AuthNestedStack, "NewPool">;
 const NewPool: React.FC<NewPoolNavigationProps> = ({ navigation }: NewPoolNavigationProps) => {

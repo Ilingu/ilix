@@ -1,6 +1,10 @@
 import { PropsWithChildren, useEffect, useState } from "react";
 import { View, ViewStyle, useWindowDimensions, type PanResponderInstance } from "react-native";
+
+// ui
 import tw from "twrnc";
+
+// utils
 import { DegToRad } from "../../lib/utils";
 
 type ParticleViewProps = PropsWithChildren<{

@@ -1,17 +1,29 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HomeNestedStack } from "../../../../screens/Home";
+import { useCallback, useContext } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import ParticleView from "../../../animations/Particles";
-import tw from "twrnc";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
-import ColorScheme from "../../../../lib/Theme";
-import { useCallback, useContext } from "react";
-import PoolContext from "../../../../lib/Context/Pool";
-import ProfilePicture from "../../../design/ProfilePicture";
-import AuthContext from "../../../../lib/Context/Auth";
-import Separator from "../../../design/Separator";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// types
+import type { HomeNestedStack } from "../../../../screens/Home";
+
+// utils
 import { pushToast } from "../../../../lib/utils";
+
+// datas
+import AuthContext from "../../../../lib/Context/Auth";
+import PoolContext from "../../../../lib/Context/Pool";
+
+// ui
+import tw from "twrnc";
+import Separator from "../../../design/Separator";
+import ParticleView from "../../../animations/Particles";
+import ProfilePicture from "../../../design/ProfilePicture";
+import ColorScheme from "../../../../lib/Theme";
+
+// icons
+import { Ionicons, FontAwesome } from "@expo/vector-icons";
+
+// -- end import
 
 type SendNavigationProps = NativeStackScreenProps<HomeNestedStack, "send">;
 const SendTransfer: React.FC<SendNavigationProps> = ({ navigation }) => {

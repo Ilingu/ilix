@@ -1,13 +1,16 @@
-https://reactnative.dev/docs/environment-setup
-https://reactnative.dev/docs/components-and-apis
-https://docs.expo.dev/get-started/create-a-project/
-https://reactnavigation.org/docs/getting-started
-https://github.com/jaredh159/tailwind-react-native-classnames
-https://www.youtube.com/watch?v=I7POH4acHV8
-https://oblador.github.io/react-native-vector-icons/
-https://docs.expo.dev/versions/latest/sdk/filesystem
-https://github.com/awesomejerry/react-native-qrcode-svg
+# Ilix::client
 
-- to identify the session: https://docs.expo.dev/versions/latest/sdk/application/
-- Store the phrasekey: https://docs.expo.dev/versions/latest/sdk/securestore/
-- Local Storage: https://docs.expo.dev/versions/latest/sdk/sqlite/
+#### ➡ Client side mobile application of ilix
+
+## Purpose
+
+1. Wanted to learn react native
+2. I'll use this app on mobile for my specific usage so I wanted to have a native app
+
+## Made with:
+
+1. **Elegance** ✅
+2. `TypeScript` ✨
+3. [react-native](https://reactnative.dev/) ♥ (for the ui framework)
+4. [expo](https://expo.dev/) 📈 (to scale up and simplify react native experience)
+5. go see [package.json](./package.json)

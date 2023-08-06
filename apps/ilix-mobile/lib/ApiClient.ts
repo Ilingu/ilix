@@ -106,7 +106,20 @@ export const SERVER_BASE_URL = (
   process.env.NODE_ENV === "development" ? "https://38af-193-32-126-236.ngrok-free.app" : ""
 ).replace(/\/+$/g, ""); // trim_matches_end of "/"
 
+/**
+ * @namespace ApiClient - This namespace regroups all the functions related to using the ilix api server.
+ *
+ * It is fully typed.
+ */
 namespace ApiClient {
+  /**
+   * Get request to the ilix api
+   * @param route all the valid get route on server
+   * @param path associated path with `route`
+   * @param query associated query with `route`
+   * @param auth associated auth with `route`
+   * @returns what the `route` returns
+   */
   export async function Get<T extends GetRoutes>(
     route: T,
     path: GetPath<T>,
@@ -120,6 +133,15 @@ namespace ApiClient {
     const call_url = `${SERVER_BASE_URL}${built_uri}`;
     return await HandleRequest(call_url, "GET", undefined, auth);
   }
+  /**
+   * Post request to the ilix api
+   * @param route all the valid post route on server
+   * @param path associated path with `route`
+   * @param query associated query with `route`
+   * @param body associated body with `route`
+   * @param auth associated auth with `route`
+   * @returns what the `route` returns
+   */
   export async function Post<T extends PostRoutes>(
     route: T,
     path: PostPath<T>,
@@ -135,6 +157,13 @@ namespace ApiClient {
     const reqBody = body === undefined ? undefined : build_body(body);
     return await HandleRequest(call_url, "POST", reqBody, auth);
   }
+  /**
+   * Put request to the ilix api
+   * @param route all the valid put route on server
+   * @param body associated body with `route`
+   * @param auth associated auth with `route`
+   * @returns what the `route` returns
+   */
   export async function Put<T extends PutRoutes>(
     route: T,
     body: PutBody<T>,
@@ -144,6 +173,14 @@ namespace ApiClient {
     const reqBody = body === undefined ? undefined : build_body(body);
     return await HandleRequest(call_url, "PUT", reqBody, auth);
   }
+  /**
+   * Post request to the ilix api
+   * @param route all the valid delete route on server
+   * @param path associated path with `route`
+   * @param body associated body with `route`
+   * @param auth associated auth with `route`
+   * @returns what the `route` returns
+   */
   export async function Delete<T extends DeleteRoutes>(
     route: T,
     path: DeletePath<T>,
@@ -195,6 +232,12 @@ namespace ApiClient {
     output?: FileList | null;
   }
 
+  /**
+   * It will ask the user in what directory to save the files, thne down
+   * @param {[string, string][]} files_to_download `[file_id, filename]`
+   * @param {string} key_phrase
+   * @returns whether it succeed or not
+   */
   export const HandleGetFilesAndSave = async (
     files_to_download: [string, string][],
     key_phrase: string

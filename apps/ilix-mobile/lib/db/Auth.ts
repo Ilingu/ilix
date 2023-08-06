@@ -1,9 +1,14 @@
-import { AuthShape } from "../Context/Auth";
 import { SS_Get, SS_Store, DEVICE_ID_KEY } from "../db/SecureStore";
-import * as Device from "expo-device";
 import { Hash, IsEmptyString } from "../utils";
+
+import * as Device from "expo-device";
 import * as Application from "expo-application";
 
+import type { AuthShape } from "../Context/Auth";
+
+/**
+ * @returns a promise with the **unique** user id
+ */
 const GetDeviceId = async (): Promise<string> => {
   let installationTime = "";
   try {

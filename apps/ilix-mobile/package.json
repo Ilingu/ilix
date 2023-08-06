@@ -1,8 +1,7 @@
 {
   "name": "ilix-mobile",
-  "description": "Mobile version of the ilix cloud explorer",
+  "description": "Mobile version of the ilix file transfer app",
   "author": {
-    "email": "ilingu@duck.com",
     "name": "Ilingu",
     "url": "https://github.com/Ilingu"
   },
@@ -11,12 +10,10 @@
     "directory": "/apps/ilix-mobile",
     "type": "git"
   },
-  "version": "0.0.1-alpha",
+  "version": "1.0.0-beta",
   "license": "MIT",
   "keywords": [
     "ilix",
-    "Cloud File Explorer",
-    "Rust",
     "Mobile",
     "React Native",
     "Tailwind",

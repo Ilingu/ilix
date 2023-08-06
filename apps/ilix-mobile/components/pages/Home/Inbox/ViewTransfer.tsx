@@ -1,23 +1,35 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HomeNestedStack } from "../../../../screens/Home";
-import { FlatList, Image, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import ParticleView from "../../../animations/Particles";
-import { useFocusEffect } from "@react-navigation/native";
 import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { FileInfo } from "../../../../lib/types/interfaces";
+import { FlatList, Image, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// data
 import ApiClient from "../../../../lib/ApiClient";
-import { ToastDuration, pushToast } from "../../../../lib/utils";
-import PoolContext from "../../../../lib/Context/Pool";
-import ProfilePicture from "../../../design/ProfilePicture";
-import { FontAwesome5, AntDesign } from "@expo/vector-icons";
-import ColorScheme from "../../../../lib/Theme";
-import Separator from "../../../design/Separator";
 import { AS_Delete, AS_Get, AS_Store, FILES_INFO_CACHE_KEY } from "../../../../lib/db/AsyncStorage";
 import AuthContext from "../../../../lib/Context/Auth";
 import TransfersContext from "../../../../lib/Context/Transfer";
+import PoolContext from "../../../../lib/Context/Pool";
+
+// ui
+import tw from "twrnc";
+import ParticleView from "../../../animations/Particles";
+import Separator from "../../../design/Separator";
+import ColorScheme from "../../../../lib/Theme";
 import Button from "../../../design/Button";
+import ProfilePicture from "../../../design/ProfilePicture";
+
+// utils
+import { ToastDuration, pushToast } from "../../../../lib/utils";
+
+// icons
+import { FontAwesome5, AntDesign } from "@expo/vector-icons";
+
+// types
+import type { FileInfo } from "../../../../lib/types/interfaces";
+import type { HomeNestedStack } from "../../../../screens/Home";
+
+// -- end import
 
 type ViewTransferNavigationProps = NativeStackScreenProps<HomeNestedStack, "ViewTransfer">;
 const ViewTransfer: React.FC<ViewTransferNavigationProps> = ({ navigation, route }) => {

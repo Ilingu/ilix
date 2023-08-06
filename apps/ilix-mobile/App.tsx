@@ -1,16 +1,21 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
 // Screens
 import AuthRouter from "./screens/Auth";
 import Home from "./screens/Home";
 import Splash from "./screens/Splash";
+
 // Ctx
 import AuthContext from "./lib/Context/Auth";
 import PoolContext from "./lib/Context/Pool";
 import TransfersContext from "./lib/Context/Transfer";
+
 // Hooks
 import useAppState from "./lib/hooks/AppState";
 import HomeHeader from "./components/pages/Home/HomeHeader";
+
+// -- end import
 
 export type RootStackParamList = {
   Auth?: {
@@ -21,14 +26,11 @@ export type RootStackParamList = {
 };
 const { Screen, Navigator } = createNativeStackNavigator<RootStackParamList>();
 
+/**
+ * Root component of the app
+ */
 export default function App() {
   const { authState, poolState, transferState } = useAppState();
-
-  // console.log({
-  //   AuthState: JSON.stringify(authState, null, 2),
-  //   PoolState: JSON.stringify(poolState, null, 2),
-  //   TransferState: JSON.stringify(transferState, null, 2),
-  // });
 
   return (
     <NavigationContainer>

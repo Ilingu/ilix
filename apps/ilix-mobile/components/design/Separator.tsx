@@ -1,4 +1,6 @@
 import { View } from "react-native";
+
+// ui
 import tw from "twrnc";
 
 export default function Separator() {

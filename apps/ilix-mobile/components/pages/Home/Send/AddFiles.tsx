@@ -1,17 +1,31 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HomeNestedStack } from "../../../../screens/Home";
+import { memo, useCallback, useState } from "react";
 import { FlatList, Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import ParticleView from "../../../animations/Particles";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// data
+import ApiClient from "../../../../lib/ApiClient";
+
+// utils
+import { IsEmptyString, ToastDuration, pushToast } from "../../../../lib/utils";
+
+// types
+import type { HomeNestedStack } from "../../../../screens/Home";
+
+// expo
+import * as DocumentPicker from "expo-document-picker";
+
+// ui
 import tw from "twrnc";
 import ColorScheme from "../../../../lib/Theme";
-import { memo, useCallback, useState } from "react";
-import Separator from "../../../design/Separator";
-import ApiClient from "../../../../lib/ApiClient";
-import { IsEmptyString, ToastDuration, pushToast } from "../../../../lib/utils";
-import * as DocumentPicker from "expo-document-picker";
 import Button from "../../../design/Button";
+import Separator from "../../../design/Separator";
+import ParticleView from "../../../animations/Particles";
+
+// icons
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+
+// -- end import
 
 type AddFilesNavigationProps = NativeStackScreenProps<HomeNestedStack, "AddFiles">;
 const AddFiles: React.FC<AddFilesNavigationProps> = ({ route }) => {

@@ -1,15 +1,23 @@
-import { AuthShape } from "../Context/Auth";
-import type { PoolCtxShape } from "../Context/Pool";
-import { TransfersCtx } from "../Context/Transfer";
-import type { FilePoolTransfer, FunctionResult, StoredDevicesPool } from "../types/interfaces";
-import { MakeKeyPhraseKey, SS_Get, SS_Store, SS_clear } from "../db/SecureStore";
 import { useEffect, useRef, useState } from "react";
-import { GetStoredAuthState } from "../db/Auth";
+
+// types
+import type { AuthShape } from "../Context/Auth";
+import type { PoolCtxShape } from "../Context/Pool";
+import type { TransfersCtx } from "../Context/Transfer";
+import type { FilePoolTransfer, FunctionResult, StoredDevicesPool } from "../types/interfaces";
+
+// data
+import { MakeKeyPhraseKey, SS_Get, SS_Store, SS_clear } from "../db/SecureStore";
 import { AS_Clear, AS_Store, POOL_KEY } from "../db/AsyncStorage";
+import { GetStoredAuthState } from "../db/Auth";
 import ApiClient from "../ApiClient";
-import { IsCodeOk, ToastDuration, pushToast } from "../utils";
-import { GetStoredPools } from "../db/Pools";
 import SSEClient from "../sse";
+import { GetStoredPools } from "../db/Pools";
+
+// utils
+import { IsCodeOk, ToastDuration, pushToast } from "../utils";
+
+// -- end import
 
 interface AppStateShape {
   authState: AuthShape;
@@ -17,6 +25,10 @@ interface AppStateShape {
   transferState: TransfersCtx;
 }
 
+/**
+ * Complex Hook that act as the app client store, listen to realtime update, handle different state and how they should act
+ * @returns the app state containing the auth, pools and transfers
+ */
 const useAppState = (): AppStateShape => {
   //#region : Auth State
   const [authState, setAuthState] = useState<AuthShape>({

@@ -1,7 +1,13 @@
-import { NativeStackScreenProps, createNativeStackNavigator } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../App";
+import {
+  type NativeStackScreenProps,
+  createNativeStackNavigator,
+} from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../App";
+
+// hook
 import usePreventNav from "../lib/hooks/PreventNav";
 
+// pages
 import Join from "../components/pages/Auth/Join";
 import NewPool from "../components/pages/Auth/NewPool";
 import QrCodeScanner from "../components/pages/Auth/QrCodeScanner";

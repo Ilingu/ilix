@@ -1,7 +1,14 @@
 [package]
 name = "ilix_server"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+authors = ["Ilingu"]
+license = "MIT"
+description = "It deletes rust 'target' folders"
+readme = "README.md"
+repository = "https://github.com/Ilingu/ilix/tree/main/apps/ilix-server"
+homepage = "https://github.com/Ilingu/ilix"
+categories = ["api"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

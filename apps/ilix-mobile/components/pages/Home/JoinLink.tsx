@@ -1,19 +1,33 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HomeNestedStack } from "../../../screens/Home";
-import { Text, TouchableOpacity, View } from "react-native";
-import ParticleView from "../../animations/Particles";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import tw from "twrnc";
 import { useEffect, useState } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// type
+import type { HomeNestedStack } from "../../../screens/Home";
+
+// data
 import { SS_Get } from "../../../lib/db/SecureStore";
+
+// ui
+import tw from "twrnc";
 import FadeInView from "../../animations/FadeIn";
-import { AntDesign } from "@expo/vector-icons";
+import ParticleView from "../../animations/Particles";
+
+// utils
 import { copyToClipboard, pushToast } from "../../../lib/utils";
-import QRCode from "react-native-qrcode-svg";
+
+// expo
 import { usePreventScreenCapture } from "expo-screen-capture";
+import QRCode from "react-native-qrcode-svg";
+
+// icons
+import { AntDesign } from "@expo/vector-icons";
+
+// --end imports
 
 type JoinLinkNavigationProps = NativeStackScreenProps<HomeNestedStack, "JoinLink">;
-const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation, route }) => {
+const JoinLink: React.FC<JoinLinkNavigationProps> = ({ navigation: _, route }) => {
   usePreventScreenCapture();
   const pool = route.params.pool;
 

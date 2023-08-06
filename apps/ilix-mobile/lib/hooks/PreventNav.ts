@@ -1,8 +1,9 @@
+import { useEffect, useRef } from "react";
+import { BackHandler } from "react-native";
+import { pushToast } from "../utils";
+
 import type { ParamListBase } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useEffect, useRef } from "react";
-import { pushToast } from "../utils";
-import { BackHandler } from "react-native";
 
 export default function usePreventNav<T extends ParamListBase, U extends keyof T>(
   navigation: NativeStackNavigationProp<T, U>,

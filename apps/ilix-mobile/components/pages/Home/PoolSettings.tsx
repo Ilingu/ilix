@@ -1,17 +1,29 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HomeNestedStack } from "../../../screens/Home";
+import { useContext } from "react";
 import { FlatList, Text, TouchableOpacity, View, ViewStyle } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import ParticleView from "../../animations/Particles";
-import tw from "twrnc";
-import { useContext } from "react";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// data
 import PoolContext from "../../../lib/Context/Pool";
-import { StoredDevicesPool } from "../../../lib/types/interfaces";
-import ColorScheme from "../../../lib/Theme";
-import { AntDesign } from "@expo/vector-icons";
-import Button from "../../design/Button";
+
+// types
+import type { HomeNestedStack } from "../../../screens/Home";
+import type { StoredDevicesPool } from "../../../lib/types/interfaces";
+
+// utils
 import { pushToast } from "../../../lib/utils";
+
+// ui
+import tw from "twrnc";
+import ParticleView from "../../animations/Particles";
+import ColorScheme from "../../../lib/Theme";
 import Separator from "../../design/Separator";
+import Button from "../../design/Button";
+
+// icons
+import { AntDesign } from "@expo/vector-icons";
+
+// -- end import
 
 type PoolSettingsNavigationProps = NativeStackScreenProps<HomeNestedStack, "PoolSettings">;
 const PoolSettings: React.FC<PoolSettingsNavigationProps> = ({ navigation }) => {

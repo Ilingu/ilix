@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from "react";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Text, View } from "react-native";
 import { BarCodeScanner, type BarCodeScannedCallback } from "expo-barcode-scanner";
-import tw from "twrnc";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// types
 import type { AuthNestedStack } from "../../../screens/Auth";
+
+// ui
+import tw from "twrnc";
+
+// expo
 import { Camera } from "expo-camera";
+
+// utils
 import { ToastDuration, pushToast } from "../../../lib/utils";
+
+// -- end import
 
 type QrScannerNavigationProps = NativeStackScreenProps<AuthNestedStack, "QrCodeScanner">;
 const QrCodeScanner: React.FC<QrScannerNavigationProps> = ({ navigation }) => {

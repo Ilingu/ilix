@@ -1,4 +1,6 @@
 import { ViewStyle } from "react-native";
+
+// ui
 import { SvgUri } from "react-native-svg";
 
 type Props = {

@@ -1,12 +1,20 @@
 import { useContext, useEffect } from "react";
-import AuthContext from "../lib/Context/Auth";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import { Image } from "react-native";
-import tw from "twrnc";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../App";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { type NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// type
+import type { RootStackParamList } from "../App";
+
+// ctx
+import AuthContext from "../lib/Context/Auth";
 import PoolContext from "../lib/Context/Pool";
+
+// ui
+import tw from "twrnc";
+import { StatusBar } from "expo-status-bar";
+
+// -- end import
 
 type NavigationProps = NativeStackScreenProps<RootStackParamList, "Splash">;
 export default function Splash({ navigation }: NavigationProps) {

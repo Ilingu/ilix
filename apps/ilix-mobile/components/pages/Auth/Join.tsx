@@ -1,4 +1,15 @@
 import { useCallback, useContext, useRef, useState } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  Image,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Dimensions,
+  PanResponder,
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
 // datas
 import PoolContext from "../../../lib/Context/Pool";
@@ -11,18 +22,6 @@ import { MakeKeyPhraseKey } from "../../../lib/db/SecureStore";
 import tw from "twrnc";
 import ColorScheme from "../../../lib/Theme";
 import SlideInView from "../../animations/SlideIn";
-
-// React native
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  Image,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Dimensions,
-  PanResponder,
-} from "react-native";
 import ParticleView from "../../animations/Particles";
 import Button from "../../design/Button";
 import FadeInView from "../../animations/FadeIn";
@@ -35,7 +34,8 @@ import type { AuthNestedStack } from "../../../screens/Auth";
 // Icons
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import { useFocusEffect } from "@react-navigation/native";
+
+// -- end import
 
 const { height: ScreenHeight } = Dimensions.get("window");
 

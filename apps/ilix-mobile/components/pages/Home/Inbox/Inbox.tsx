@@ -1,16 +1,26 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { HomeNestedStack } from "../../../../screens/Home";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { useContext } from "react";
-import TransfersContext from "../../../../lib/Context/Transfer";
-import tw from "twrnc";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// ui
+import tw from "twrnc";
 import ParticleView from "../../../animations/Particles";
 import ColorScheme from "../../../../lib/Theme";
-import { AntDesign, FontAwesome } from "@expo/vector-icons";
-import PoolContext from "../../../../lib/Context/Pool";
 import ProfilePicture from "../../../design/ProfilePicture";
 import Separator from "../../../design/Separator";
+
+// types
+import type { HomeNestedStack } from "../../../../screens/Home";
+
+// datas
+import PoolContext from "../../../../lib/Context/Pool";
+import TransfersContext from "../../../../lib/Context/Transfer";
+
+// icons
+import { AntDesign, FontAwesome } from "@expo/vector-icons";
+
+// -- end import
 
 type InboxNavigationProps = NativeStackScreenProps<HomeNestedStack, "inbox">;
 const Inbox: React.FC<InboxNavigationProps> = ({ navigation }) => {

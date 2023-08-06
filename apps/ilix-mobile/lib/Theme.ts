@@ -1,3 +1,6 @@
+/**
+ * @enum {ColorScheme} simple way to keep track of theme configuration accros app
+ */
 enum ColorScheme {
   TEXT = "#333333",
   PRIMARY_CONTENT = "#181830",

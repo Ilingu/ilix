@@ -1,20 +1,30 @@
+import { useContext, useEffect } from "react";
+import { CommonActions } from "@react-navigation/native";
 import {
   createNativeStackNavigator,
   type NativeStackScreenProps,
 } from "@react-navigation/native-stack";
+
+// expo
+import { StatusBar } from "expo-status-bar";
+
+// type
 import type { RootStackParamList } from "../App";
+import type { StoredDevicesPool } from "../lib/types/interfaces";
+
+// data
+import PoolContext from "../lib/Context/Pool";
+
+// hooks
 import usePreventNav from "../lib/hooks/PreventNav";
+
+// pages
+import HomeHeader from "../components/pages/Home/HomeHeader";
 import HomeDefault from "../components/pages/Home/default";
 import Inbox from "../components/pages/Home/Inbox/Inbox";
-import { useContext, useEffect } from "react";
-import HomeHeader from "../components/pages/Home/HomeHeader";
-import PoolContext from "../lib/Context/Pool";
-import { CommonActions } from "@react-navigation/native";
-import PoolSettings from "../components/pages/Home/PoolSettings";
 import SendTransfer from "../components/pages/Home/Send/Send";
-import type { StoredDevicesPool } from "../lib/types/interfaces";
+import PoolSettings from "../components/pages/Home/PoolSettings";
 import JoinLink from "../components/pages/Home/JoinLink";
-import { StatusBar } from "expo-status-bar";
 import ViewTransfer from "../components/pages/Home/Inbox/ViewTransfer";
 import AddFiles from "../components/pages/Home/Send/AddFiles";
 

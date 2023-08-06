@@ -1,5 +1,9 @@
 import { Image, Text, TouchableOpacity, View } from "react-native";
+
+// ui
 import tw from "twrnc";
+
+// icons
 import { AntDesign } from "@expo/vector-icons";
 
 type Props = {
