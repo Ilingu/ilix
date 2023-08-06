@@ -25,6 +25,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build": "eas build --platform android --message \"Ilix V1\" --profile preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
