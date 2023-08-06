@@ -41,44 +41,26 @@ type CustomEvents = "connected" | "pool" | "transfer" | "logout";
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events
  */
 export default class SSEClient {
-  /**
-   * @private
-   */
-  static #_handler: SSEClient;
+  private static _handler: SSEClient;
 
   /**
    * @private
    */
-  #sse_connection: EventSource<CustomEvents>;
+  private sse_connection: EventSource<CustomEvents>;
 
-  /**
-   * @private
-   */
-  #poolListeners: { [K in string]: callbackFn<"on_pool"> } = {};
-  /**
-   * @private
-   */
-  #transferListeners: { [K in string]: callbackFn<"on_transfer"> } = {};
-  /**
-   * @private
-   */
-  #logoutListeners: { [K in string]: callbackFn<"on_logout"> } = {};
-  /**
-   * @private
-   */
-  #errorListeners: { [K in string]: callbackFn<"onerror"> } = {};
-  /**
-   * @private
-   */
-  #closeListeners: { [K in string]: callbackFn<"onclosed"> } = {};
+  private poolListeners: { [K in string]: callbackFn<"on_pool"> } = {};
+  private transferListeners: { [K in string]: callbackFn<"on_transfer"> } = {};
+  private logoutListeners: { [K in string]: callbackFn<"on_logout"> } = {};
+  private errorListeners: { [K in string]: callbackFn<"onerror"> } = {};
+  private closeListeners: { [K in string]: callbackFn<"onclosed"> } = {};
 
   private constructor(sse_connection: EventSource<CustomEvents>) {
-    this.#sse_connection = sse_connection;
+    this.sse_connection = sse_connection;
   }
 
-  static #new_handler(sse_connection: EventSource<CustomEvents>) {
-    this.#_handler = new this(sse_connection);
-    return this.#_handler;
+  private static new_handler(sse_connection: EventSource<CustomEvents>) {
+    this._handler = new this(sse_connection);
+    return this._handler;
   }
 
   /**
@@ -113,8 +95,8 @@ export default class SSEClient {
       return { succeed: false, reason };
     }
 
-    const handler = this.#new_handler(sse_connection);
-    handler.#listenToEvent();
+    const handler = this.new_handler(sse_connection);
+    handler.listenToEvent();
 
     return { succeed: true, data: handler };
   }
@@ -125,8 +107,8 @@ export default class SSEClient {
    * @method
    * @private
    */
-  #listenToEvent() {
-    this.#sse_connection.addEventListener("pool", (msg) => {
+  private listenToEvent() {
+    this.sse_connection.addEventListener("pool", (msg) => {
       if (msg.type !== "pool" || typeof msg.data !== "string") return;
 
       try {
@@ -141,11 +123,12 @@ export default class SSEClient {
           !("devices_id_to_name" in pool)
         )
           return;
-        Object.values(this.#poolListeners).forEach((cb) => cb(pool));
+        Object.values(this.poolListeners).forEach((cb) => cb(pool));
       } catch {}
     });
-    this.#sse_connection.addEventListener("transfer", (msg) => {
+    this.sse_connection.addEventListener("transfer", (msg) => {
       if (msg.type !== "transfer" || typeof msg.data !== "string") return;
+
       try {
         const resp_data: SSEData<FilePoolTransfer> = JSON.parse(msg.data);
         if (!("Transfer" in resp_data)) return;
@@ -159,19 +142,19 @@ export default class SSEClient {
           !("files_id" in transfer)
         )
           return;
-        Object.values(this.#transferListeners).forEach((cb) => cb(transfer));
+        Object.values(this.transferListeners).forEach((cb) => cb(transfer));
       } catch {}
     });
-    this.#sse_connection.addEventListener("logout", (msg) => {
+    this.sse_connection.addEventListener("logout", (msg) => {
       if (msg.type !== "logout" || typeof msg.data !== "string") return;
-      Object.values(this.#logoutListeners).forEach((cb) => cb());
+      Object.values(this.logoutListeners).forEach((cb) => cb());
     });
-    this.#sse_connection.addEventListener("close", () => {
-      Object.values(this.#closeListeners).forEach((cb) => cb());
+    this.sse_connection.addEventListener("close", () => {
+      Object.values(this.closeListeners).forEach((cb) => cb());
     });
-    this.#sse_connection.addEventListener("error", () => {
-      this.#sse_connection.close();
-      Object.values(this.#errorListeners).forEach((cb) => cb());
+    this.sse_connection.addEventListener("error", () => {
+      this.sse_connection.close();
+      Object.values(this.errorListeners).forEach((cb) => cb());
     });
   }
 
@@ -185,19 +168,19 @@ export default class SSEClient {
     const id = uuid.v4() as string;
     switch (event) {
       case "on_pool":
-        this.#poolListeners[id] = cb as callbackFn<"on_pool">;
+        this.poolListeners[id] = cb as callbackFn<"on_pool">;
         break;
       case "on_transfer":
-        this.#transferListeners[id] = cb as callbackFn<"on_transfer">;
+        this.transferListeners[id] = cb as callbackFn<"on_transfer">;
         break;
       case "on_logout":
-        this.#logoutListeners[id] = cb as callbackFn<"on_logout">;
+        this.logoutListeners[id] = cb as callbackFn<"on_logout">;
         break;
       case "onclosed":
-        this.#closeListeners[id] = cb as callbackFn<"onclosed">;
+        this.closeListeners[id] = cb as callbackFn<"onclosed">;
         break;
       case "onerror":
-        this.#errorListeners[id] = cb as callbackFn<"onerror">;
+        this.errorListeners[id] = cb as callbackFn<"onerror">;
         break;
       default:
         break;
@@ -213,19 +196,19 @@ export default class SSEClient {
   public removeEventListener<T extends Events>(event: T, id: string) {
     switch (event) {
       case "on_pool":
-        delete this.#poolListeners[id];
+        delete this.poolListeners[id];
         break;
       case "on_transfer":
-        delete this.#transferListeners[id];
+        delete this.transferListeners[id];
         break;
       case "on_logout":
-        delete this.#logoutListeners[id];
+        delete this.logoutListeners[id];
         break;
       case "onclosed":
-        delete this.#closeListeners[id];
+        delete this.closeListeners[id];
         break;
       case "onerror":
-        delete this.#errorListeners[id];
+        delete this.errorListeners[id];
         break;
       default:
         break;
