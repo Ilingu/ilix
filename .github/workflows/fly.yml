@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - apps/ilix-server/**
+  workflow_dispatch:
 
 defaults:
   run:
