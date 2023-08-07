@@ -6,9 +6,6 @@
     "ilix_prod": {
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://ilix-api.fly.dev"
       }
     }
   },

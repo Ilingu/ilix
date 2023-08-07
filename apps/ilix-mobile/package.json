@@ -10,7 +10,7 @@
     "directory": "/apps/ilix-mobile",
     "type": "git"
   },
-  "version": "1.0.0-beta",
+  "version": "1.0.2-beta",
   "license": "MIT",
   "keywords": [
     "ilix",
