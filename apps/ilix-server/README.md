@@ -17,7 +17,7 @@
 
 ## Installation
 
-> Before executing the api, you must create a `.env` file at the root of this project with the following varaibles:
+> Before running the api, you must create a `.env` file at the root of this project with the following variables:
 
 ```bash
 APP_MODE="dev"
