@@ -2,7 +2,14 @@ name: Fly Deploy
 on:
   push:
     branches:
-      - master
+      - main
+    paths:
+      - apps/ilix-server/**
+
+defaults:
+  run:
+    working-directory: ./apps/ilix-server
+
 jobs:
   deploy:
     name: Deploy app
